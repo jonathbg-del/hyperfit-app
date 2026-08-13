@@ -412,6 +412,16 @@ details pre{background:var(--bg);border:1px solid var(--border);border-radius:10
       </div>
     </div>
     <div class="card">
+      <h2 style="font-size:16px">Modelo de treino</h2>
+      <p class="small muted" style="margin-top:4px">Escolha um ponto de partida pronto. Depois é só editar o que quiser — os exercícios continuam totalmente ajustáveis.</p>
+      <div class="perfil-grid">
+        <div><label class="f">Seu nível</label><select class="fld" id="mtNivel" style="text-align:left"></select></div>
+        <div><label class="f">Dias por semana</label><select class="fld" id="mtDias" style="text-align:left"></select></div>
+      </div>
+      <div id="mtPreview"></div>
+      <button class="btn" id="mtAplicar" style="margin-top:12px">Aplicar este modelo</button>
+    </div>
+    <div class="card">
       <h2 style="font-size:16px">Programa de treino</h2>
       <p class="small muted" style="margin-top:4px">Inclua, exclua, reordene ou altere os exercícios de cada treino do ciclo.</p>
       <button class="btn" id="editProgBtn" style="margin-top:12px">✎ Editar exercícios</button>
@@ -491,8 +501,147 @@ details pre{background:var(--bg);border:1px solid var(--border);border-radius:10
 <script>
 /* ================= DADOS ================= */
 const INCREMENTO={composto:2.5,isolador:1.5,unilateral:1,"iso-tempo":5};
-const CICLO=["A","B","C","D","E","F"];
+let CICLO=["A","B","C","D","E","F"];  // ajustado ao programa logo abaixo
 const META_DEFAULT={kcal:2200,prot:130,carbo:230,gord:70};  // ponto de partida neutro; o perfil recalcula
+/* =========================================================
+   BIBLIOTECA DE MODELOS DE TREINO
+   Um exercício é definido UMA vez aqui e referenciado pelos
+   modelos. Séries, faixa de repetições e RIR vêm do nível.
+   ========================================================= */
+const EX_LIB={
+ // ---- pernas ----
+ agacho:{nome:"Agachamento",tipo:"composto",nota:"Coxa paralela ao solo. Joelhos alinhados com os pés."},
+ legpress:{nome:"Leg press",tipo:"composto",nota:"Não deixe a lombar descolar do encosto."},
+ hack:{nome:"Agachamento hack",tipo:"composto",nota:"Descida controlada; empurre pelo meio do pé."},
+ stiff:{nome:"Stiff barra reta",tipo:"composto",nota:"Quadril para trás; costas neutras; barra rente à perna."},
+ terra:{nome:"Levantamento terra romeno",tipo:"composto",nota:"Alongue o posterior; não arredonde a lombar."},
+ hipthrust:{nome:"Elevação pélvica (hip thrust)",tipo:"composto",nota:"Pausa de 1s no topo; aperte o glúteo."},
+ extensora:{nome:"Cadeira extensora",tipo:"isolador",nota:"Pausa de 1s no topo."},
+ flexora:{nome:"Mesa flexora",tipo:"isolador",nota:"Controle a volta; não use impulso."},
+ flexoraaj:{nome:"Flexora ajoelhada unilateral",tipo:"unilateral",nota:"Amplitude total; controle a volta."},
+ afundo:{nome:"Afundo (passada)",tipo:"unilateral",nota:"Tronco ereto; joelho da frente estável."},
+ panturrilha:{nome:"Panturrilha em pé",tipo:"isolador",nota:"Amplitude completa; pausa embaixo."},
+ panturrilhas:{nome:"Panturrilha sentada",tipo:"isolador",nota:"Pausa embaixo, alongando."},
+ // ---- peito ----
+ supino:{nome:"Supino reto",tipo:"composto",nota:"Escápulas retraídas; desça controlado até o peito."},
+ supinoinc:{nome:"Supino inclinado com halteres",tipo:"composto",nota:"Banco a 30–45°. Desça até sentir alongar."},
+ supinomaq:{nome:"Supino na máquina",tipo:"composto",nota:"Amplitude completa; ombro estável."},
+ crossover:{nome:"Crossover",tipo:"isolador",nota:"Foco no alongamento; junte à frente do corpo."},
+ crucifixo:{nome:"Crucifixo (halteres ou máquina)",tipo:"isolador",nota:"Cotovelos levemente flexionados; abra sem forçar o ombro."},
+ // ---- costas ----
+ puxada:{nome:"Puxada aberta (pulldown)",tipo:"composto",nota:"Puxe até a clavícula; controle a subida."},
+ puxadaneutra:{nome:"Puxada pegada neutra",tipo:"composto",nota:"Cotovelos rentes ao corpo; controle a subida."},
+ barra:{nome:"Barra fixa (ou assistida)",tipo:"composto",nota:"Use assistência se necessário para completar a faixa."},
+ remadacurv:{nome:"Remada curvada",tipo:"composto",nota:"Tronco firme; puxe ao abdômen."},
+ remadaneutra:{nome:"Remada pegada neutra",tipo:"composto",nota:"Cotovelos para trás; aperte as escápulas."},
+ serrote:{nome:"Remada unilateral (serrote)",tipo:"unilateral",nota:"Amplitude total; alongue bem embaixo."},
+ pullover:{nome:"Pullover",tipo:"isolador",nota:"Alongue bem no topo; foco no dorsal."},
+ // ---- ombro ----
+ desenv:{nome:"Desenvolvimento (barra ou halteres)",tipo:"composto",nota:"Núcleo firme; sem hiperextensão lombar."},
+ desenvmaq:{nome:"Desenvolvimento na máquina",tipo:"composto",nota:"Amplitude completa; ombro estável."},
+ elevlat:{nome:"Elevação lateral",tipo:"isolador",nota:"Carga leve; suba até a linha do ombro. Descanso de 60–90s."},
+ facepull:{nome:"Face pull",tipo:"isolador",nota:"Cotovelos altos; foco no deltoide posterior."},
+ reversefly:{nome:"Crucifixo invertido (reverse fly)",tipo:"isolador",nota:"Carga leve; não use impulso de tronco."},
+ // ---- braço ----
+ roscadir:{nome:"Rosca direta",tipo:"isolador",nota:"Cotovelo fixo ao lado do corpo."},
+ roscainc:{nome:"Rosca inclinada (halteres)",tipo:"isolador",nota:"Cotovelo atrás — bíceps alongado."},
+ roscascott:{nome:"Rosca scott",tipo:"isolador",nota:"Pico de contração no topo."},
+ roscamartelo:{nome:"Rosca martelo",tipo:"isolador",nota:"Pegada neutra — trabalha o braquial."},
+ triceppolia:{nome:"Tríceps na polia",tipo:"isolador",nota:"Cotovelos fixos ao lado do corpo."},
+ tricepfrances:{nome:"Tríceps francês (overhead)",tipo:"isolador",nota:"Braço acima da cabeça, alongando a cabeça longa."},
+ triceptesta:{nome:"Tríceps testa",tipo:"isolador",nota:"Controle a descida; cotovelos apontados para cima."},
+ mergulho:{nome:"Mergulho no banco",tipo:"composto",nota:"Desça até 90° no cotovelo."},
+ // ---- core e extras ----
+ prancha:{nome:"Prancha",tipo:"iso-tempo",nota:"Registre os segundos no campo de carga. Quadril alinhado."},
+ abdominal:{nome:"Abdominal na polia",tipo:"isolador",nota:"Flexione a coluna; não puxe com o quadril."},
+ deadhang:{nome:"Dead hang (preensão)",tipo:"iso-tempo",nota:"Registre os segundos no campo de carga. Sem straps."}
+};
+
+/* Cada modelo lista os exercícios em ORDEM DE PRIORIDADE.
+   Níveis com menos volume simplesmente cortam do fim da lista. */
+const MODELOS_TREINO={
+ "3":{rotulo:"3 dias — Full Body",dias:[
+   {nome:"Full Body A",foco:"Corpo inteiro — ênfase em empurrar",cardio:false,ex:["agacho","supino","remadacurv","desenv","roscadir","prancha"]},
+   {nome:"Full Body B",foco:"Corpo inteiro — ênfase em puxar",cardio:true,ex:["stiff","puxada","supinoinc","elevlat","triceppolia","panturrilha"]},
+   {nome:"Full Body C",foco:"Corpo inteiro — volume acessório",cardio:false,ex:["legpress","remadaneutra","crossover","desenvmaq","roscamartelo","abdominal"]}
+ ]},
+ "4":{rotulo:"4 dias — Superior / Inferior",dias:[
+   {nome:"Superior A",foco:"Peito, costas, ombro e braço",cardio:false,ex:["supino","remadacurv","desenv","puxada","roscadir","triceppolia"]},
+   {nome:"Inferior A",foco:"Pernas — ênfase em quadríceps",cardio:true,ex:["agacho","extensora","stiff","flexoraaj","panturrilha"]},
+   {nome:"Superior B",foco:"Peito, costas, ombro e braço",cardio:false,ex:["supinoinc","remadaneutra","elevlat","puxadaneutra","roscamartelo","tricepfrances"]},
+   {nome:"Inferior B",foco:"Pernas — ênfase em posterior",cardio:true,ex:["terra","legpress","hipthrust","flexora","panturrilhas"]}
+ ]},
+ "5":{rotulo:"5 dias — Push / Pull / Legs + Superior / Inferior",dias:[
+   {nome:"Push",foco:"Peito, ombro e tríceps",cardio:false,ex:["supinoinc","supinomaq","desenv","elevlat","triceppolia","tricepfrances"]},
+   {nome:"Pull",foco:"Costas e bíceps",cardio:true,ex:["puxada","remadacurv","serrote","facepull","roscainc","roscascott"]},
+   {nome:"Legs",foco:"Pernas completo",cardio:true,ex:["agacho","extensora","stiff","flexoraaj","panturrilhas"]},
+   {nome:"Superior",foco:"Volume extra de superiores",cardio:false,ex:["supino","remadaneutra","desenvmaq","puxadaneutra","roscamartelo","triceptesta"]},
+   {nome:"Inferior",foco:"Volume extra de pernas",cardio:true,ex:["legpress","hipthrust","terra","flexora","panturrilha"]}
+ ]},
+ "6":{rotulo:"6 dias — Push / Pull / Legs (2×)",dias:[
+   {nome:"Pull A",foco:"Costas (largura) + bíceps",cardio:false,ex:["puxada","remadacurv","serrote","facepull","roscainc","roscascott","deadhang"]},
+   {nome:"Legs A",foco:"Pernas (quadríceps)",cardio:true,ex:["agacho","extensora","stiff","flexoraaj","panturrilhas"]},
+   {nome:"Push A",foco:"Peito + ombro + tríceps",cardio:false,ex:["supinoinc","supinomaq","crossover","desenvmaq","elevlat","tricepfrances"]},
+   {nome:"Pull B",foco:"Costas (espessura) + bíceps",cardio:true,ex:["remadaneutra","puxadaneutra","pullover","reversefly","roscascott","roscamartelo"]},
+   {nome:"Push B",foco:"Ombro + peito + tríceps",cardio:false,ex:["desenv","supinomaq","crucifixo","elevlat","triceppolia","triceptesta"]},
+   {nome:"Legs B",foco:"Pernas (posterior)",cardio:true,ex:["terra","flexoraaj","legpress","hipthrust","extensora","panturrilhas"]}
+ ]}
+};
+
+/* O nível ajusta volume, intensidade e quantos exercícios entram por dia. */
+const NIVEIS_TREINO={
+ iniciante:{
+   rotulo:"Iniciante",
+   descricao:"Menos volume, faixas mais altas de repetição e margem de segurança maior. Foco em aprender o movimento.",
+   maxEx:5,
+   sets:{composto:3,unilateral:2,isolador:2,"iso-tempo":2},
+   warmups:{composto:2,unilateral:1,isolador:0,"iso-tempo":0},
+   reps:{composto:[8,12],unilateral:[10,12],isolador:[12,15],"iso-tempo":[20,30]},
+   rir:{composto:"2–3",unilateral:"2–3",isolador:"1–2","iso-tempo":"—"}
+ },
+ intermediario:{
+   rotulo:"Intermediário",
+   descricao:"Volume moderado e progressão mais próxima da falha. Pressupõe técnica consolidada.",
+   maxEx:6,
+   sets:{composto:3,unilateral:3,isolador:3,"iso-tempo":3},
+   warmups:{composto:2,unilateral:1,isolador:0,"iso-tempo":0},
+   reps:{composto:[8,12],unilateral:[10,12],isolador:[12,15],"iso-tempo":[20,30]},
+   rir:{composto:"1–2",unilateral:"1–2",isolador:"0–1","iso-tempo":"—"}
+ },
+ avancado:{
+   rotulo:"Avançado",
+   descricao:"Volume alto e proximidade da falha nos isoladores. Exige boa recuperação — sono e alimentação em dia.",
+   maxEx:7,
+   sets:{composto:4,unilateral:3,isolador:3,"iso-tempo":3},
+   warmups:{composto:2,unilateral:1,isolador:0,"iso-tempo":0},
+   reps:{composto:[6,10],unilateral:[10,12],isolador:[12,15],"iso-tempo":[20,30]},
+   rir:{composto:"1–3",unilateral:"1–2",isolador:"0–1","iso-tempo":"—"}
+ }
+};
+
+const LETRAS_CICLO=["A","B","C","D","E","F"];
+/* Monta o programa final combinando modelo + nível. */
+function montarPrograma(dias,nivel){
+  const mod=MODELOS_TREINO[String(dias)],niv=NIVEIS_TREINO[nivel];
+  if(!mod||!niv)return null;
+  const prog={};
+  mod.dias.forEach((d,i)=>{
+    const letra=LETRAS_CICLO[i];
+    prog[letra]={nome:d.nome,foco:d.foco,cardio:!!d.cardio,exercicios:
+      d.ex.slice(0,niv.maxEx).map(chave=>{
+        const e=EX_LIB[chave];
+        const faixa=niv.reps[e.tipo]||[10,12];
+        return{nome:e.nome,tipo:e.tipo,
+          sets:niv.sets[e.tipo]||3,
+          warmups:niv.warmups[e.tipo]||0,
+          repMin:faixa[0],repMax:faixa[1],
+          rir:niv.rir[e.tipo]||"1–2",
+          ref:null,nota:e.nota};
+      })};
+  });
+  return prog;
+}
+
 const PROGRAMA_DEFAULT={
  A:{nome:"Pull A",foco:"Costas (largura) + bíceps",cardio:false,exercicios:[
   {nome:"Puxada aberta (pulldown)",tipo:"composto",sets:4,warmups:2,repMin:8,repMax:12,rir:"1–2",ref:null,nota:"Puxe até a clavícula; controle a subida."},
@@ -684,6 +833,8 @@ function freshState(){return {sessions:[],diary:JSON.parse(JSON.stringify(DIARIO
 let S=load();
 if(!S.program)S.program=JSON.parse(JSON.stringify(PROGRAMA_DEFAULT));
 let PROGRAMA=S.program;
+CICLO=Object.keys(S.program||{}).filter(k=>/^[A-F]$/.test(k));
+if(!CICLO.length)CICLO=["A","B","C","D","E","F"];
 function load(){let s;try{const r=localStorage.getItem(KEY);s=r?Object.assign(freshState(),JSON.parse(r)):freshState();s.settings=Object.assign({nutriMeta:{...META_DEFAULT}},s.settings);if(!s.settings.nutriMeta)s.settings.nutriMeta={...META_DEFAULT};}catch(e){s=freshState();}
   // aparelho novo já vem com a config do Firebase — só falta entrar com o Google
   if(!s.settings.firebase||!s.settings.firebase.apiKey)s.settings.firebase={...FIREBASE_DEFAULT};
@@ -755,7 +906,7 @@ function renderUsoArmz(){
   const vf=document.getElementById("appVerFoot");if(vf)vf.textContent=APP_VERSION;
   const d=document.getElementById("iaDesc");
   if(d)d.innerHTML=proxyAtivo()
-    ? "O assistente já vem <b>ativo</b> — você não precisa configurar nada. Ele lê prints de sono, balança e alimentação, estima macros e conversa com base no seu histórico. O uso mensal é limitado por aparelho."
+    ? "O assistente já vem <b>ativo</b> — você não precisa configurar nada. Ele lê prints de sono e balança, estima macros, e monta seu programa a partir de uma <b>foto da sua ficha de treino</b>. O uso mensal é limitado por aparelho."
     : "Sem chave, o Coach funciona por regras. Com a chave gratuita do Google Gemini ele conversa lendo seu histórico <b>e lê os prints</b> pra preencher o diário.";
   const el=document.getElementById("usoArmz");if(!el)return;
   const u=usoArmazenamento();
@@ -866,6 +1017,56 @@ function preencherCamposNascimento(iso){
   mes.value=+iso.slice(5,7);
   atualizarDias();
   dia.value=+iso.slice(8,10);
+}
+/* ---------- modelos de treino ---------- */
+function renderModeloTreino(){
+  const nv=document.getElementById("mtNivel"),dd=document.getElementById("mtDias");
+  if(!nv||!dd)return;
+  if(!nv.options.length){
+    nv.innerHTML=Object.entries(NIVEIS_TREINO).map(([k,v])=>`<option value="${k}">${v.rotulo}</option>`).join("");
+    dd.innerHTML=Object.entries(MODELOS_TREINO).map(([k,v])=>`<option value="${k}">${k} dias</option>`).join("");
+    const sel=S.settings.modeloTreino||{};
+    if(sel.nivel)nv.value=sel.nivel;
+    if(sel.dias)dd.value=String(sel.dias);
+    [nv,dd].forEach(el=>el.addEventListener("change",previewModelo));
+  }
+  previewModelo();
+}
+function previewModelo(){
+  const box=document.getElementById("mtPreview");if(!box)return;
+  const nivel=document.getElementById("mtNivel").value;
+  const dias=document.getElementById("mtDias").value;
+  const mod=MODELOS_TREINO[dias],niv=NIVEIS_TREINO[nivel];
+  const prog=montarPrograma(dias,nivel);
+  if(!prog){box.innerHTML="";return;}
+  const totalSeries=Object.values(prog).reduce((a,d)=>a+d.exercicios.reduce((b,e)=>b+e.sets,0),0);
+  const atual=S.settings.modeloTreino;
+  const ehAtual=atual&&atual.nivel===nivel&&String(atual.dias)===String(dias);
+  box.innerHTML=`<div class="calcbox">
+    <div class="hd">${esc(mod.rotulo)}${ehAtual?" · em uso":""}</div>
+    <p class="small muted" style="margin:0 0 8px">${esc(niv.descricao)}</p>
+    ${Object.entries(prog).map(([l,d])=>`<div class="lin"><span><b>${l}</b> · ${esc(d.nome)}</span><b>${d.exercicios.length} ex.</b></div>`).join("")}
+    <div class="lin"><span>Volume semanal</span><b>${totalSeries} séries</b></div>
+  </div>`;
+}
+function aplicarModelo(){
+  const nivel=document.getElementById("mtNivel").value;
+  const dias=document.getElementById("mtDias").value;
+  const prog=montarPrograma(dias,nivel);
+  if(!prog){toast("Modelo inválido");return;}
+  const temCarga=Object.values(PROGRAMA||{}).some(d=>d.exercicios.some(e=>e.ref!=null));
+  const aviso=`Aplicar "${MODELOS_TREINO[dias].rotulo}" no nível ${NIVEIS_TREINO[nivel].rotulo}?\n\nIsto substitui os exercícios do seu ciclo`+
+    (temCarga?" e apaga as cargas de referência já registradas":"")+
+    ".\n\nSeu histórico de treinos e o diário NÃO são afetados.";
+  if(!confirm(aviso))return;
+  S.program=prog;
+  S.settings.modeloTreino={nivel,dias:+dias};
+  S.draft=null;
+  save();
+  PROGRAMA=S.program;CICLO=Object.keys(S.program);
+  curLetra=CICLO[0];
+  initToday();renderModeloTreino();renderProgress();
+  toast("Modelo aplicado ✔");
 }
 function renderPerfil(){
   const pf=PERFIL();
@@ -1659,7 +1860,7 @@ function ruleCoach(q){q=q.toLowerCase();const r=readiness(),next=nextLetter(),w=
   if(/treino de hoje|qual treino|lista|exerc/.test(q)){let t=`**Treino ${next} · ${w.nome}** — ${w.foco}${w.cardio?" · 🏃 cardio Zona 2 após":""}\n\n`;w.exercicios.forEach(ex=>{const rf=refFor(ex,next),v=verdict(ex,next);t+=`• **${ex.nome}** — ${ex.sets}×${ex.repMin}–${ex.repMax}${ex.tipo==='iso-tempo'?'s':''}, RIR ${ex.rir}${rf?` · ref ${rf}${ex.tipo==='iso-tempo'?'s':'kg'}`:''}${v.type==='up'?` → ${v.txt}`:''}${ex.alerta?` ⚠️ ${ex.alerta}`:''}\n`;});t+=`\nReporta as séries juntas (peso×reps) que eu registro, ou toca em cada exercício na aba **Hoje**.`;return t;}
   if(/progresso|evolu|como (estou|vou)/.test(q)){const fin=S.sessions.filter(s=>s.finished);let ready=0;CICLO.forEach(l=>PROGRAMA[l].exercicios.forEach(ex=>{if(verdict(ex,l).type==="up")ready++;}));const sonos=[...S.diary].filter(d=>d.sonoPont!=null).map(d=>d.sonoPont);return`**Panorama**\n• Sessões no app: ${fin.length}\n• Prontos p/ subir carga: **${ready}**\n• Sono recente: ${sonos.slice(-3).join(", ")} — ${sonos.slice(-3).some(x=>x<50)?"ainda instável, seu maior limitador agora":"melhorando"}.\n\nAbra a aba **Progresso** e toque em cada indicador pra ver a curva.`;}
   if(/subir|carga/.test(q)){let ups=[];CICLO.forEach(l=>PROGRAMA[l].exercicios.forEach(ex=>{const v=verdict(ex,l);if(v.type==="up")ups.push(`${l}: ${ex.nome} → ${v.txt}`);}));return ups.length?("**Prontos p/ subir carga:**\n• "+ups.join("\n• ")):"Ainda sem registros suficientes no app. Finalize um treino que eu calculo a dupla progressão.";}
-  return`Posso: **leitura do dia**, **treino de hoje** com cargas, **seu progresso** e **o que subir**. Anexe prints 📎 de sono, balança ou alimentação — pode mandar vários de uma vez — que eu preencho o diário sozinho.`;}
+  return`Posso: **leitura do dia**, **treino de hoje** com cargas, **seu progresso** e **o que subir**.\n\nAnexe 📎 e eu leio sozinho: prints de **sono**, telas de **balança** e até **foto da sua ficha de treino** (papel ou app) — nesse caso eu monto o programa inteiro pra você.`;}
 /* Modelos tentados em ordem — o Google muda cotas do plano gratuito com o tempo.
    O que funcionar é memorizado em S.settings.geminiModel para as próximas chamadas. */
 const GEMINI_MODELS=["gemini-flash-latest","gemini-2.5-flash","gemini-flash-lite-latest","gemini-2.0-flash","gemini-2.0-flash-lite"];
@@ -1764,6 +1965,74 @@ document.getElementById("imgFile").onchange=async e=>{
   const imgs=await Promise.all(fs.map(f=>new Promise(res=>{const rd=new FileReader();rd.onload=()=>res({dataUrl:rd.result,mime:f.type});rd.onerror=()=>res(null);rd.readAsDataURL(f);})));
   handleImages(imgs.filter(Boolean));
 };
+/* ---------- ficha de treino lida por foto ---------- */
+let fichaPendente=null;
+const TIPOS_VALIDOS=["composto","isolador","unilateral","iso-tempo"];
+/* Normaliza o que a IA devolveu: descarta lixo, completa o que faltou e
+   reaproveita a nota de execução quando o exercício existe na biblioteca. */
+function normalizarFicha(data){
+  const dias=(data.dias||[]).map(d=>{
+    const ex=(d.exercicios||[]).map(e=>{
+      const nome=String(e.nome||"").trim();
+      if(!nome)return null;
+      const tipo=TIPOS_VALIDOS.includes(e.tipo)?e.tipo:"isolador";
+      let sets=parseInt(e.sets,10); if(!(sets>0&&sets<=10))sets=3;
+      let rMin=parseInt(e.repMin,10),rMax=parseInt(e.repMax,10);
+      if(!(rMin>0))rMin=tipo==="iso-tempo"?20:8;
+      if(!(rMax>0)||rMax<rMin)rMax=tipo==="iso-tempo"?30:Math.max(rMin,12);
+      const carga=parseFloat(e.carga);
+      const daLib=Object.values(EX_LIB).find(x=>x.nome.toLowerCase()===nome.toLowerCase());
+      return{nome:daLib?daLib.nome:nome,tipo:daLib?daLib.tipo:tipo,
+        sets,warmups:tipo==="composto"?2:0,repMin:rMin,repMax:rMax,
+        rir:tipo==="composto"?"1–2":"0–1",
+        ref:isFinite(carga)&&carga>0?carga:null,
+        nota:daLib?daLib.nota:"Importado da sua ficha. Ajuste a orientação se quiser."};
+    }).filter(Boolean);
+    return ex.length?{nome:String(d.nome||"Treino").trim().slice(0,40),foco:String(d.foco||"").trim().slice(0,60),cardio:false,exercicios:ex}:null;
+  }).filter(Boolean).slice(0,6);
+  return dias;
+}
+/* Mostra o que foi entendido e espera confirmação — nunca sobrescreve calado. */
+function proporFicha(data){
+  const dias=normalizarFicha(data);
+  if(!dias.length){
+    addChat("bot","Reconheci que é uma ficha de treino, mas não consegui extrair os exercícios. Tente uma foto mais nítida, com a ficha reta e bem iluminada — ou cadastre pelo editor em Ajustes.");
+    return;
+  }
+  fichaPendente=dias;
+  const totalEx=dias.reduce((a,d)=>a+d.exercicios.length,0);
+  const comCarga=dias.reduce((a,d)=>a+d.exercicios.filter(e=>e.ref!=null).length,0);
+  const corpo=dias.map((d,i)=>`**${LETRAS_CICLO[i]} · ${d.nome}**${d.foco?` — ${d.foco}`:""}\n`+
+    d.exercicios.map(e=>`  • ${e.nome} — ${e.sets}× ${e.repMin}${e.repMax!==e.repMin?"-"+e.repMax:""}${e.ref?` · ${e.ref}kg`:""}`).join("\n")).join("\n\n");
+  addChat("bot",`**Li sua ficha** — ${dias.length} treino${dias.length>1?"s":""}, ${totalEx} exercício${totalEx>1?"s":""}${comCarga?`, ${comCarga} com carga`:""}.\n\n${corpo}\n\nConfira se está certo. Se estiver, toque em **Usar esta ficha** abaixo — isso substitui o programa atual. Você pode editar tudo depois em Ajustes.`);
+  renderBotaoFicha();
+}
+function renderBotaoFicha(){
+  const dock=document.getElementById("chatLog");if(!dock||!fichaPendente)return;
+  const box=document.createElement("div");
+  box.className="msg bot";box.style.background="transparent";box.style.padding="0";
+  box.innerHTML=`<div class="btn-row" style="margin-top:0">
+    <button class="btn" id="fichaOk">Usar esta ficha</button>
+    <button class="btn secondary" id="fichaNao">Descartar</button></div>`;
+  dock.appendChild(box);chatScroll();
+  document.getElementById("fichaOk").onclick=()=>{
+    if(!fichaPendente)return;
+    const prog={};
+    fichaPendente.forEach((d,i)=>{prog[LETRAS_CICLO[i]]=d;});
+    S.program=prog;S.settings.modeloTreino=null;S.draft=null;
+    save();
+    PROGRAMA=S.program;CICLO=Object.keys(S.program);curLetra=CICLO[0];
+    initToday();if(typeof renderModeloTreino==="function")renderModeloTreino();
+    fichaPendente=null;box.remove();
+    addChat("bot","Pronto ✔ Sua ficha virou o programa do app. Abra a aba **Hoje** para registrar o treino, e ajuste o que quiser em **Ajustes → Editar exercícios**.");
+    toast("Ficha importada ✔");
+  };
+  document.getElementById("fichaNao").onclick=()=>{
+    fichaPendente=null;box.remove();
+    addChat("bot","Ficha descartada. Você pode mandar outra foto, escolher um modelo pronto em Ajustes, ou cadastrar manualmente.");
+  };
+}
+
 /* Monta a mesma frase-resumo que vai na coluna de observações do diário —
    é o texto que aparecia só quando os dados eram lançados manualmente. */
 function resumoPrint(d){
@@ -1805,14 +2074,32 @@ async function handleImages(imgs){
   if(!S.settings.geminiKey&&!proxyAtivo()){addChat("bot","Para eu **ler os prints automaticamente** preciso do assistente ativo. Sem ele, me diga os números: pontuação do sono, recuperação física %, ciclos, profundo e REM (min), ou o peso da balança — eu registro no diário.");return;}
   const log=document.getElementById("chatLog");const tmp=document.createElement("div");tmp.className="msg bot";tmp.textContent=n===1?"Lendo o print…":`Lendo os ${n} prints…`;log.appendChild(tmp);chatScroll();
   const setStatus=t=>{tmp.textContent=(n===1?"Lendo o print… ":`Lendo os ${n} prints… `)+t;chatNoFim();};
-  const prompt=`As imagens a seguir são ${n===1?"um print":`${n} prints`} de aplicativos de saúde. Podem ser:
-(a) telas de SONO (Samsung Health): pontuação, fatores, fases do sono;
-(b) telas de BALANÇA / composição corporal (peso, IMC, % de gordura, massa muscular);
-(c) uma mistura das duas.
-Combine os dados de TODAS as imagens num único resultado. Se um campo aparecer em mais de uma imagem, use o valor mais específico. Se houver data visível no print, devolva em "dataColeta" no formato AAAA-MM-DD.
-Responda APENAS um JSON válido, sem texto extra e sem markdown, com estas chaves (use null quando o campo não aparecer em nenhuma imagem):
-{"sonoPont":num,"recFisica":num,"recMental":num,"descanso":num,"ciclos":num,"profundoMin":num,"remMin":num,"acordadoMin":num,"leveMin":num,"spo2":num,"dormiuInicio":"HH:MM","dormiuFim":"HH:MM","tempoRealMin":num,"pesoKg":num,"imc":num,"gorduraPct":num,"massaMuscularPct":num,"gorduraKg":num,"dataColeta":"AAAA-MM-DD"}
-Converta horas:min em minutos (ex.: 1h12 = 72). Use ponto como separador decimal.`;
+  const nomesConhecidos=Object.values(EX_LIB).map(e=>e.nome).join("; ");
+  const prompt=`Você recebe ${n===1?"uma imagem":`${n} imagens`} enviadas por alguém que usa um app de treino e saúde.
+
+PRIMEIRO classifique o conteúdo em "tipo":
+ • "saude" — telas de aplicativos de sono, relógio/pulseira, ou balança/composição corporal;
+ • "ficha"  — uma ficha/planilha de treino: lista de exercícios com séries e repetições, seja print de app, foto de papel, caderno ou quadro de academia;
+ • "outro"  — qualquer coisa que não seja nenhum dos dois.
+
+Responda APENAS um JSON válido, sem texto extra e sem markdown.
+
+SE FOR "saude", use este formato (null onde o campo não aparecer):
+{"tipo":"saude","sonoPont":num,"recFisica":num,"recMental":num,"descanso":num,"ciclos":num,"profundoMin":num,"remMin":num,"acordadoMin":num,"leveMin":num,"spo2":num,"dormiuInicio":"HH:MM","dormiuFim":"HH:MM","tempoRealMin":num,"pesoKg":num,"imc":num,"gorduraPct":num,"massaMuscularPct":num,"gorduraKg":num,"dataColeta":"AAAA-MM-DD"}
+Converta horas:min em minutos (ex.: 1h12 = 72). Use ponto como separador decimal.
+
+SE FOR "ficha", use este formato:
+{"tipo":"ficha","dias":[{"nome":"Treino A","foco":"Peito e tríceps","exercicios":[{"nome":"Supino reto","tipo":"composto","sets":4,"repMin":8,"repMax":12,"carga":60}]}]}
+Regras para a ficha:
+ - Um objeto em "dias" para CADA treino distinto (Treino A/B/C, Ficha 1/2, Segunda/Quarta, Push/Pull...). Se a ficha tiver um treino só, devolva um único dia.
+ - "tipo" de cada exercício deve ser um destes: "composto" (multiarticular: agachamento, supino, remada, terra, desenvolvimento, leg press), "isolador" (monoarticular: rosca, tríceps, elevação lateral, extensora, panturrilha), "unilateral" (um lado por vez: serrote, afundo, flexora unilateral) ou "iso-tempo" (sustentação por tempo: prancha, dead hang).
+ - Expanda abreviações para o nome por extenso ("sup inc halt" → "Supino inclinado com halteres"; "cad ext" → "Cadeira extensora").
+ - Quando o exercício corresponder a um destes nomes, use EXATAMENTE a grafia da lista: ${nomesConhecidos}
+ - "repMin"/"repMax": se a ficha disser "10", use 10 e 10. Se disser "8-12", use 8 e 12. Se disser "até a falha", use 8 e 15.
+ - "carga": o peso em kg SÓ se estiver escrito na ficha; caso contrário, null.
+ - Ignore aquecimento, alongamento e observações que não sejam exercícios com séries.
+
+SE FOR "outro": {"tipo":"outro","motivo":"descreva em uma frase o que a imagem mostra"}`;
   try{
     const small=await Promise.all(imgs.map(im=>shrinkImage(im.dataUrl,im.mime)));
     const parts=[{text:prompt},...small.map(im=>({inline_data:{mime_type:im.mime,data:im.dataUrl.split(",")[1]}}))];
@@ -1820,6 +2107,13 @@ Converta horas:min em minutos (ex.: 1h12 = 72). Use ponto como separador decimal
     const mt=(g.texto||"").match(/\{[\s\S]*\}/);tmp.remove();
     if(!mt){addChat("bot","Não consegui ler "+(n===1?"o print":"os prints")+".\n\n"+(g.texto?"A IA respondeu mas sem dados reconhecíveis. Confira se são as telas de sono do Samsung Health.":gemErroMsg(g)));return;}
     const data=JSON.parse(mt[0]);
+
+    if(data.tipo==="outro"){
+      addChat("bot",`Não reconheci ${n===1?"essa imagem":"essas imagens"} como tela de saúde nem como ficha de treino.${data.motivo?` Parece ser: ${esc(data.motivo)}.`:""}\n\nEu leio: prints de sono, telas de balança, e fichas de treino (inclusive foto de papel).`);
+      return;
+    }
+    if(data.tipo==="ficha"){ proporFicha(data); return; }
+
     // usa a data do próprio print quando ela aparecer; senão, hoje
     const iso=(typeof data.dataColeta==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(data.dataColeta))?data.dataColeta:todayISO();
     const e={data:iso};
@@ -1907,7 +2201,7 @@ document.getElementById("progBack").onclick=()=>{S.draft=null;initToday();switch
 document.getElementById("progResetDefault").onclick=()=>{if(confirm("Restaurar os exercícios originais da planilha? Suas alterações no programa serão perdidas (o histórico de treinos é mantido).")){S.program=JSON.parse(JSON.stringify(PROGRAMA_DEFAULT));PROGRAMA=S.program;save();renderProgEdit();toast("Programa restaurado");}};
 
 /* ================= NAV / UTIL ================= */
-function switchView(v){document.querySelectorAll(".view").forEach(x=>x.classList.remove("active"));document.getElementById("view-"+v).classList.add("active");document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("active",b.dataset.view===v));document.getElementById("chatDock").style.display=v==="coach"?"block":"none";document.body.style.paddingBottom=v==="coach"?"150px":"88px";window.scrollTo(0,0);if(v==="prog")renderProgress();if(v==="coach")chatScroll();if(v==="hoje"){renderWater();}if(v==="diario"){renderDiaryHist();renderMeds();renderExames();}if(v==="ajustes"){renderUsoArmz();renderPerfil();}if(v==="nutri")renderNutri();if(v==="coach"){renderChat();renderSuggest();}}
+function switchView(v){document.querySelectorAll(".view").forEach(x=>x.classList.remove("active"));document.getElementById("view-"+v).classList.add("active");document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("active",b.dataset.view===v));document.getElementById("chatDock").style.display=v==="coach"?"block":"none";document.body.style.paddingBottom=v==="coach"?"150px":"88px";window.scrollTo(0,0);if(v==="prog")renderProgress();if(v==="coach")chatScroll();if(v==="hoje"){renderWater();}if(v==="diario"){renderDiaryHist();renderMeds();renderExames();}if(v==="ajustes"){renderUsoArmz();renderPerfil();renderModeloTreino();}if(v==="nutri")renderNutri();if(v==="coach"){renderChat();renderSuggest();}}
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>switchView(b.dataset.view));
 function toast(t){const el=document.getElementById("toast");el.textContent=t;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),1900);}
 function applyTheme(){document.documentElement.setAttribute("data-theme",S.settings.theme);const m=document.querySelector('meta[name=theme-color]');if(m)m.setAttribute("content",S.settings.theme==="light"?"#F3F5F8":"#0E1217");}
@@ -1943,6 +2237,7 @@ document.getElementById("impBtn").onclick=()=>document.getElementById("impFile")
 document.getElementById("impFile").onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{S=Object.assign(freshState(),JSON.parse(rd.result));save();location.reload();}catch(err){toast("Arquivo inválido");}};rd.readAsText(f);};
 document.getElementById("clearHistBtn").onclick=()=>{if(confirm("Zerar todo o histórico (treinos, diário, refeições e conversa) e recomeçar do zero agora? Seus exercícios serão mantidos.")){S.sessions=[];S.diary=[];S.meals=[];S.chat=[];S.draft=null;if(S.settings.progPeriod)S.settings.progPeriod.start="";save();location.reload();}};
 document.getElementById("resetBtn").onclick=()=>{if(confirm("Restaurar TUDO ao estado original da planilha? Isto apaga seus registros E volta os exercícios ao padrão.")){S=freshState();save();location.reload();}};
+document.getElementById("mtAplicar").onclick=aplicarModelo;
 document.getElementById("pSalvar").onclick=salvarPerfil;
 document.getElementById("pAplicar").onclick=aplicarMetasCalculadas;
 preencherNascimento();
@@ -2059,7 +2354,7 @@ document.getElementById("fbHelp").textContent=`1. console.firebase.google.com �
 
 /* ================= BOOT ================= */
 applyTheme();document.getElementById("geminiKey").value=S.settings.geminiKey||"";
-renderWater();renderMeds();renderExames();renderUsoArmz();renderPerfil();
+renderWater();renderMeds();renderExames();renderUsoArmz();renderPerfil();renderModeloTreino();
 initToday();initDiary();renderChat();renderSyncUI();
 /* Android pode encerrar a aba a qualquer momento ao trocar de app.
    Grava imediatamente sempre que a tela é escondida. */
