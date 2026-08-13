@@ -4,7 +4,7 @@
      Isso garante que uma versão nova publicada chegue no aparelho na próxima abertura.
    - Ícones/manifest → CACHE PRIMEIRO (não mudam e economizam dados).
 */
-const CACHE = "hyperfit-v4";
+const CACHE = "hyperfit-app-v1";
 const ASSETS = ["./", "./index.html", "./manifest.json", "./icon.svg", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e => {
