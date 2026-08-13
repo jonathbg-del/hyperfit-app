@@ -417,8 +417,8 @@ details pre{background:var(--bg);border:1px solid var(--border);border-radius:10
       <button class="btn" id="editProgBtn" style="margin-top:12px">✎ Editar exercícios</button>
     </div>
     <div class="card">
-      <h2 style="font-size:16px">Coach com IA (opcional, grátis)</h2>
-      <p class="small muted" style="margin-top:4px">Sem chave, o Coach funciona por regras. Com a chave gratuita do Google Gemini ele conversa lendo seu histórico <b>e lê os prints do sono</b> pra preencher o diário.</p>
+      <h2 style="font-size:16px">Coach com IA</h2>
+      <p class="small muted" style="margin-top:4px" id="iaDesc"></p>
       <label class="f">Chave da API Gemini</label>
       <input class="fld" id="geminiKey" style="text-align:left" placeholder="cola aqui (fica só no aparelho)">
       <button class="btn secondary" id="saveKey" style="margin-top:12px">Salvar chave</button>
@@ -588,6 +588,24 @@ const FOODS={
 };
 /* ================= ESTADO ================= */
 const APP_VERSION="1.0.0-beta";
+/* Endereço do proxy que guarda a chave do Gemini.
+   Deixe vazio para o app pedir a chave ao próprio usuário (modo avançado). */
+const PROXY_URL="https://hiperfit-ia.jonathbg.workers.dev";
+
+/* Identificador anônimo desta instalação: um código aleatório, sem nome
+   e sem e-mail. Serve para o proxy contar quantos usos de IA cada
+   aparelho fez no mês — e, no futuro, para reconhecer uma assinatura. */
+function instalacaoId(){
+  let id=null;
+  try{id=localStorage.getItem("hyperfit_install");}catch(e){}
+  if(!id||!/^[a-zA-Z0-9_-]{8,64}$/.test(id)){
+    const r=(crypto&&crypto.randomUUID)?crypto.randomUUID().replace(/-/g,""):(Date.now().toString(36)+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));
+    id="i_"+r.slice(0,30);
+    try{localStorage.setItem("hyperfit_install",id);}catch(e){}
+  }
+  return id;
+}
+const proxyAtivo=()=>PROXY_URL&&!PROXY_URL.startsWith("__");
 const KEY="hyperfit_v1";
 /* Config pública do Firebase (client config — não é segredo; o acesso aos dados é
    protegido pelas regras do Firestore, que exigem login e só liberam o próprio uid).
@@ -732,6 +750,10 @@ function save(silent){
 /* Mostra em Ajustes quanto do armazenamento o app ocupa. */
 function renderUsoArmz(){
   const v=document.getElementById("appVer");if(v)v.textContent=APP_VERSION;
+  const d=document.getElementById("iaDesc");
+  if(d)d.innerHTML=proxyAtivo()
+    ? "O assistente já vem <b>ativo</b> — você não precisa configurar nada. Ele lê prints de sono, balança e alimentação, estima macros e conversa com base no seu histórico. O uso mensal é limitado por aparelho."
+    : "Sem chave, o Coach funciona por regras. Com a chave gratuita do Google Gemini ele conversa lendo seu histórico <b>e lê os prints</b> pra preencher o diário.";
   const el=document.getElementById("usoArmz");if(!el)return;
   const u=usoArmazenamento();
   el.textContent=`Armazenamento em uso: ${u.mb} MB (limite do navegador ≈ 5 MB). As imagens antigas do chat são descartadas automaticamente.`;
@@ -1644,7 +1666,10 @@ function sleepMs(ms){return new Promise(r=>setTimeout(r,ms));}
 /* Chama o Gemini com 3 tentativas por modelo (backoff) e fallback para os outros modelos.
    onStatus(txt) é opcional — recebe o andamento para mostrar na tela. */
 async function geminiCall(body,onStatus){
-  const key=S.settings.geminiKey;if(!key)return{erro:"sem chave",status:0};
+  const key=S.settings.geminiKey;
+  // Chave própria (modo avançado) tem prioridade; senão, usa o proxy.
+  const viaProxy=!key&&proxyAtivo();
+  if(!key&&!viaProxy)return{erro:"sem chave",status:0};
   const saved=S.settings.geminiModel;
   const lista=saved?[saved,...GEMINI_MODELS.filter(m=>m!==saved)]:GEMINI_MODELS.slice();
   let ultimoErro="sem resposta",ultimoStatus=0;
@@ -1653,8 +1678,15 @@ async function geminiCall(body,onStatus){
     for(let tent=0;tent<3;tent++){
       try{
         if(onStatus&&(tent>0||mi>0))onStatus(`${m.replace("gemini-","")} · tentativa ${tent+1}/3…`);
-        const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+        const res=viaProxy
+          ? await fetch(`${PROXY_URL}?modelo=${encodeURIComponent(m)}`,{method:"POST",
+              headers:{"Content-Type":"application/json","X-Install-Id":instalacaoId()},
+              body:JSON.stringify(body)})
+          : await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
         const j=await res.json().catch(()=>({}));
+        // O proxy avisa quando a cota mensal daquela instalação acabou.
+        if(res.status===429&&j&&j.error==="limite_mensal")
+          return{erro:j.mensagem,status:429,limite:true};
         const txt=j.candidates?.[0]?.content?.parts?.[0]?.text;
         if(txt){if(S.settings.geminiModel!==m){S.settings.geminiModel=m;save(true);}return{texto:txt,modelo:m,status:200};}
         ultimoErro=j.error?.message||("HTTP "+res.status);ultimoStatus=res.status;
@@ -1672,9 +1704,13 @@ async function geminiCall(body,onStatus){
 /* Traduz o erro técnico em instrução acionável. */
 function gemErroMsg(r){
   const st=r.status||0;
+  if(r.limite)return r.erro;
+  if(st===403)return"Este aplicativo não está autorizado a usar o assistente a partir deste endereço. Se você abriu por um link diferente do oficial, tente pelo link original.";
   if(RETRY_STATUS.includes(st))return"Os servidores do Gemini estão congestionados agora (erro 503) — tentei todos os modelos, 3 vezes cada. **Não é problema da sua chave nem da sua cota.** Tente de novo em alguns minutos, ou digite os números no Diário.";
   if(st===429)return"**Cota diária do Gemini esgotada.** Ela zera à meia-noite no horário do Pacífico (~4h ou 5h no Brasil). Por hoje, digite os números direto no Diário.";
-  if(st===400||st===403)return"**Chave do Gemini inválida ou sem permissão.** Gere outra em aistudio.google.com/apikey e cole em Ajustes.";
+  if(st===400)return proxyAtivo()&&!S.settings.geminiKey
+    ? "O assistente recusou a requisição. Se acabou de acontecer com um print, tente uma imagem menor ou mais nítida."
+    : "**Chave do Gemini inválida ou sem permissão.** Gere outra em aistudio.google.com/apikey e cole em Ajustes.";
   if(st===0)return"Sem conexão com a internet. Verifique a rede e tente de novo.";
   return r.erro||"Erro desconhecido.";
 }
@@ -1763,7 +1799,7 @@ async function handleImages(imgs){
   if(!imgs.length)return;
   const n=imgs.length;
   await addChatImg("user",n===1?"(print anexado)":`(${n} prints anexados)`,imgs[0].dataUrl);
-  if(!S.settings.geminiKey){addChat("bot","Para eu **ler os prints automaticamente** preciso do Gemini ativo (grátis, em Ajustes). Sem ele, me diga os números: pontuação do sono, recuperação física %, ciclos, profundo e REM (min), ou o peso da balança — eu registro no diário.");return;}
+  if(!S.settings.geminiKey&&!proxyAtivo()){addChat("bot","Para eu **ler os prints automaticamente** preciso do assistente ativo. Sem ele, me diga os números: pontuação do sono, recuperação física %, ciclos, profundo e REM (min), ou o peso da balança — eu registro no diário.");return;}
   const log=document.getElementById("chatLog");const tmp=document.createElement("div");tmp.className="msg bot";tmp.textContent=n===1?"Lendo o print…":`Lendo os ${n} prints…`;log.appendChild(tmp);chatScroll();
   const setStatus=t=>{tmp.textContent=(n===1?"Lendo o print… ":`Lendo os ${n} prints… `)+t;chatNoFim();};
   const prompt=`As imagens a seguir são ${n===1?"um print":`${n} prints`} de aplicativos de saúde. Podem ser:
@@ -1916,6 +1952,14 @@ document.getElementById("exPainelBtn").onclick=painelConsulta;
 document.getElementById("medAddBtn").onclick=novoMed;
 document.getElementById("medHistBtn").onclick=medHistorico;
 document.getElementById("dData").addEventListener("change",()=>renderMeds());
+(function(){
+  // Com o proxy ativo, o usuário comum não precisa ver campo de chave nenhum.
+  if(!proxyAtivo())return;
+  const campo=document.getElementById("geminiKey");
+  if(campo&&campo.parentElement)campo.parentElement.style.display="none";
+  const btn=document.getElementById("saveKey");
+  if(btn)btn.style.display="none";
+})();
 document.getElementById("saveKey").onclick=()=>{S.settings.geminiKey=document.getElementById("geminiKey").value.trim();save();toast(S.settings.geminiKey?"Coach IA ativado ✔":"Chave removida — coach por regras");};
 document.getElementById("deployHelp").textContent=`GITHUB PAGES (grátis):
 1. Crie um repositório e suba a pasta HyperFit.
