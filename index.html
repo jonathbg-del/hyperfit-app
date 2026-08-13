@@ -419,10 +419,12 @@ details pre{background:var(--bg);border:1px solid var(--border);border-radius:10
     <div class="card">
       <h2 style="font-size:16px">Coach com IA</h2>
       <p class="small muted" style="margin-top:4px" id="iaDesc"></p>
-      <label class="f">Chave da API Gemini</label>
-      <input class="fld" id="geminiKey" style="text-align:left" placeholder="cola aqui (fica só no aparelho)">
-      <button class="btn secondary" id="saveKey" style="margin-top:12px">Salvar chave</button>
-      <p class="small" style="margin-top:10px">Grátis em <span class="link">aistudio.google.com/apikey</span></p>
+      <div id="blocoChave">
+        <label class="f">Chave da API Gemini</label>
+        <input class="fld" id="geminiKey" style="text-align:left" placeholder="cola aqui (fica só no aparelho)">
+        <button class="btn secondary" id="saveKey" style="margin-top:12px">Salvar chave</button>
+        <p class="small" style="margin-top:10px">Grátis em <span class="link">aistudio.google.com/apikey</span></p>
+      </div>
     </div>
     <div class="card">
       <h2 style="font-size:16px">Seus dados</h2>
@@ -435,7 +437,7 @@ details pre{background:var(--bg);border:1px solid var(--border);border-radius:10
       <input type="file" id="impFile" accept="application/json" hidden>
       <button class="btn secondary" id="clearHistBtn" style="margin-top:10px">↺ Zerar histórico e recomeçar</button>
       <p class="small muted" style="margin-top:6px">Apaga treinos, diário, refeições e conversa — <b>mantém seus exercícios</b>. Começa do zero a partir de agora.</p>
-      <button class="btn secondary" id="resetBtn" style="margin-top:10px;color:var(--down)">Restaurar tudo da planilha original</button>
+      <button class="btn secondary" id="resetBtn" style="margin-top:10px;color:var(--down)">Apagar tudo e restaurar padrões</button>
     </div>
     <div class="card">
       <h2 style="font-size:16px">Sincronizar entre aparelhos (Firebase)</h2>
@@ -448,7 +450,7 @@ details pre{background:var(--bg);border:1px solid var(--border);border-radius:10
       <h2 style="font-size:16px">Publicar no celular (PWA)</h2>
       <details><summary>Como colocar online e instalar</summary><pre id="deployHelp"></pre></details>
     </div>
-    <p class="small muted" style="text-align:center;margin-top:16px">HyperFit · gerado a partir de Rotina_HyperFit_Ciclo_v6</p>
+    <p class="small muted" style="text-align:center;margin-top:16px">HyperFit · versão <span id="appVerFoot"></span></p>
   </section>
 
   <!-- EDITOR DE PROGRAMA (oculto do menu) -->
@@ -750,6 +752,7 @@ function save(silent){
 /* Mostra em Ajustes quanto do armazenamento o app ocupa. */
 function renderUsoArmz(){
   const v=document.getElementById("appVer");if(v)v.textContent=APP_VERSION;
+  const vf=document.getElementById("appVerFoot");if(vf)vf.textContent=APP_VERSION;
   const d=document.getElementById("iaDesc");
   if(d)d.innerHTML=proxyAtivo()
     ? "O assistente já vem <b>ativo</b> — você não precisa configurar nada. Ele lê prints de sono, balança e alimentação, estima macros e conversa com base no seu histórico. O uso mensal é limitado por aparelho."
@@ -1571,8 +1574,8 @@ document.getElementById("calcMeal").onclick=async()=>{
   }
   if(!S.settings.geminiKey){
     pv.innerHTML=gramas!=null
-      ? `Não achei "<b>${esc(nome)}</b>" na base. Abra "Inserir macros manualmente" ou ative o Gemini em Ajustes p/ estimar automático.`
-      : `Para converter <b>${q} ${unidLabel(unid,q)}</b> em macros eu preciso do Gemini ativo (grátis, em Ajustes) — a tabela local só trabalha em gramas. Enquanto isso, use "Inserir macros manualmente".`;
+      ? `Não achei "<b>${esc(nome)}</b>" na base. Use "Inserir macros manualmente" — ou tente de novo, o assistente pode estar momentaneamente indisponível.`
+      : `Para converter <b>${q} ${unidLabel(unid,q)}</b> em macros eu preciso do assistente, e ele não respondeu agora — a tabela local só trabalha em gramas. Use "Inserir macros manualmente" ou tente novamente em instantes.`;
     return;
   }
   pv.innerHTML="Consultando IA…";
@@ -1656,7 +1659,7 @@ function ruleCoach(q){q=q.toLowerCase();const r=readiness(),next=nextLetter(),w=
   if(/treino de hoje|qual treino|lista|exerc/.test(q)){let t=`**Treino ${next} · ${w.nome}** — ${w.foco}${w.cardio?" · 🏃 cardio Zona 2 após":""}\n\n`;w.exercicios.forEach(ex=>{const rf=refFor(ex,next),v=verdict(ex,next);t+=`• **${ex.nome}** — ${ex.sets}×${ex.repMin}–${ex.repMax}${ex.tipo==='iso-tempo'?'s':''}, RIR ${ex.rir}${rf?` · ref ${rf}${ex.tipo==='iso-tempo'?'s':'kg'}`:''}${v.type==='up'?` → ${v.txt}`:''}${ex.alerta?` ⚠️ ${ex.alerta}`:''}\n`;});t+=`\nReporta as séries juntas (peso×reps) que eu registro, ou toca em cada exercício na aba **Hoje**.`;return t;}
   if(/progresso|evolu|como (estou|vou)/.test(q)){const fin=S.sessions.filter(s=>s.finished);let ready=0;CICLO.forEach(l=>PROGRAMA[l].exercicios.forEach(ex=>{if(verdict(ex,l).type==="up")ready++;}));const sonos=[...S.diary].filter(d=>d.sonoPont!=null).map(d=>d.sonoPont);return`**Panorama**\n• Sessões no app: ${fin.length}\n• Prontos p/ subir carga: **${ready}**\n• Sono recente: ${sonos.slice(-3).join(", ")} — ${sonos.slice(-3).some(x=>x<50)?"ainda instável, seu maior limitador agora":"melhorando"}.\n\nAbra a aba **Progresso** e toque em cada indicador pra ver a curva.`;}
   if(/subir|carga/.test(q)){let ups=[];CICLO.forEach(l=>PROGRAMA[l].exercicios.forEach(ex=>{const v=verdict(ex,l);if(v.type==="up")ups.push(`${l}: ${ex.nome} → ${v.txt}`);}));return ups.length?("**Prontos p/ subir carga:**\n• "+ups.join("\n• ")):"Ainda sem registros suficientes no app. Finalize um treino que eu calculo a dupla progressão.";}
-  return`Posso: **leitura do dia**, **treino de hoje** com cargas, **seu progresso** e **o que subir**. Anexe os prints do sono 📎 — pode mandar os dois de uma vez (precisa do Gemini ativo). Para conversa completa lendo todo o histórico, ative o Gemini grátis em Ajustes.`;}
+  return`Posso: **leitura do dia**, **treino de hoje** com cargas, **seu progresso** e **o que subir**. Anexe prints 📎 de sono, balança ou alimentação — pode mandar vários de uma vez — que eu preencho o diário sozinho.`;}
 /* Modelos tentados em ordem — o Google muda cotas do plano gratuito com o tempo.
    O que funcionar é memorizado em S.settings.geminiModel para as próximas chamadas. */
 const GEMINI_MODELS=["gemini-flash-latest","gemini-2.5-flash","gemini-flash-lite-latest","gemini-2.0-flash","gemini-2.0-flash-lite"];
@@ -1736,7 +1739,7 @@ function shrinkImage(dataUrl,mime,maxW=1280,q=0.82){
   });
 }
 async function coachReply(q){
-  if(!S.settings.geminiKey)return ruleCoach(q);
+  if(!S.settings.geminiKey&&!proxyAtivo())return ruleCoach(q);
   const r=await geminiCall({system_instruction:{parts:[{text:buildContext()}]},contents:[{role:"user",parts:[{text:q}]}]});
   return r.texto||("(Gemini) "+gemErroMsg(r)+"\n\n"+ruleCoach(q));
 }
@@ -1953,12 +1956,11 @@ document.getElementById("medAddBtn").onclick=novoMed;
 document.getElementById("medHistBtn").onclick=medHistorico;
 document.getElementById("dData").addEventListener("change",()=>renderMeds());
 (function(){
-  // Com o proxy ativo, o usuário comum não precisa ver campo de chave nenhum.
+  // Com o proxy ativo, escondemos só os campos de chave — o cartão em si
+  // continua visível para explicar que o assistente já vem ligado.
   if(!proxyAtivo())return;
-  const campo=document.getElementById("geminiKey");
-  if(campo&&campo.parentElement)campo.parentElement.style.display="none";
-  const btn=document.getElementById("saveKey");
-  if(btn)btn.style.display="none";
+  const bloco=document.getElementById("blocoChave");
+  if(bloco)bloco.style.display="none";
 })();
 document.getElementById("saveKey").onclick=()=>{S.settings.geminiKey=document.getElementById("geminiKey").value.trim();save();toast(S.settings.geminiKey?"Coach IA ativado ✔":"Chave removida — coach por regras");};
 document.getElementById("deployHelp").textContent=`GITHUB PAGES (grátis):
