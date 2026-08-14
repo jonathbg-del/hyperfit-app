@@ -154,6 +154,26 @@ main{max-width:640px;margin:0 auto;padding:16px 16px 24px}
 .bv-passo .hint{font-size:12.5px;color:var(--muted);margin-bottom:12px;line-height:1.5}
 .bv-erro{color:#FF6A5E;font-size:12.5px;margin-top:8px;display:none}
 .bv-erro.on{display:block}
+.bv-check{display:flex;gap:11px;align-items:flex-start;padding:11px 0;cursor:pointer}
+.bv-check input{appearance:none;-webkit-appearance:none;flex:0 0 20px;width:20px;height:20px;margin-top:1px;border:1.5px solid var(--muted);border-radius:6px;background:transparent;position:relative;cursor:pointer}
+.bv-check input:checked{background:var(--accent);border-color:var(--accent)}
+.bv-check input:checked::after{content:"✓";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:800}
+.bv-check .t{font-size:13.5px;line-height:1.45}
+.bv-check .t small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.bv-link{color:var(--accent);text-decoration:underline;cursor:pointer}
+#legalModal{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.75);display:none;padding:20px}
+#legalModal.on{display:flex;align-items:center;justify-content:center}
+.legal-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;max-width:620px;width:100%;max-height:86vh;display:flex;flex-direction:column}
+.legal-hd{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--border)}
+.legal-hd h3{font-size:16px}
+.legal-hd button{background:var(--elev);border:1px solid var(--border);color:var(--txt);border-radius:9px;padding:7px 13px;font-size:13px;font-weight:700;cursor:pointer}
+.legal-body{overflow-y:auto;padding:18px;font-size:14px;line-height:1.62}
+.legal-body h1{font-size:18px;margin:0 0 12px}
+.legal-body h2{font-size:15px;margin:20px 0 7px;color:var(--accent)}
+.legal-body p{margin-bottom:11px}
+.legal-body table{width:100%;border-collapse:collapse;font-size:12.5px;margin:12px 0}
+.legal-body th,.legal-body td{border:1px solid var(--border);padding:7px 9px;text-align:left}
+.legal-body th{background:var(--elev)}
 .perfil-grid .full{grid-column:1/-1}
 .calcbox{background:var(--elev);border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:12px}
 .calcbox .lin{display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;font-size:13.5px;border-bottom:1px solid var(--border)}
@@ -265,9 +285,14 @@ details pre{background:var(--bg);border:1px solid var(--border);border-radius:10
     <p class="bv-sub">Três passos rápidos e o app já abre configurado do seu jeito. Dá para mudar tudo depois em Ajustes.</p>
 
     <div class="bv-passo">
-      <h3><span class="num">1</span> Seu e-mail</h3>
-      <p class="hint">Fica guardado só neste aparelho, para identificar seus dados. Não enviamos nada para lugar nenhum.</p>
-      <input class="fld" type="email" id="bvEmail" style="text-align:left" placeholder="voce@email.com" autocomplete="email" inputmode="email">
+      <h3><span class="num">1</span> Seus dados</h3>
+      <p class="hint">O assistente vai te chamar pelo nome. Seus registros de treino e saúde ficam no aparelho — só o cadastro é enviado.</p>
+      <div class="perfil-grid" style="margin-top:0">
+        <div><label class="f">Nome</label><input class="fld" id="bvNome" style="text-align:left" placeholder="João" autocomplete="given-name"></div>
+        <div><label class="f">Sobrenome</label><input class="fld" id="bvSobrenome" style="text-align:left" placeholder="Silva" autocomplete="family-name"></div>
+        <div class="full"><label class="f">Celular com DDD</label><input class="fld" type="tel" id="bvTelefone" style="text-align:left" placeholder="(11) 90000-0000" autocomplete="tel" inputmode="tel"></div>
+        <div class="full"><label class="f">E-mail</label><input class="fld" type="email" id="bvEmail" style="text-align:left" placeholder="voce@email.com" autocomplete="email" inputmode="email"></div>
+      </div>
     </div>
 
     <div class="bv-passo">
@@ -299,9 +324,21 @@ details pre{background:var(--bg);border:1px solid var(--border);border-radius:10
       <div id="bvPreview"></div>
     </div>
 
+    <div class="bv-passo">
+      <h3><span class="num">4</span> Aceites</h3>
+      <label class="bv-check"><input type="checkbox" id="bvAceiteTermos"><span class="t">Li e aceito os <span class="bv-link" id="verTermos">Termos de Uso</span> e a <span class="bv-link" id="verPriv">Política de Privacidade</span>.<small>Obrigatório para usar o aplicativo.</small></span></label>
+      <label class="bv-check"><input type="checkbox" id="bvAceiteMkt"><span class="t">Quero receber novidades e ofertas por e-mail e WhatsApp.<small>Opcional. Você pode usar o app normalmente sem marcar.</small></span></label>
+      <p class="hint" style="margin:8px 0 0">Nunca enviamos spam, e jamais pedimos senha, dados bancários ou documentos por e-mail, ligação ou mensagem.</p>
+    </div>
+
     <p class="bv-erro" id="bvErro"></p>
-    <button class="btn" id="bvSalvar" style="margin-top:6px;width:100%">Salvar e começar</button>
+    <button class="btn" id="bvSalvar" style="margin-top:6px;width:100%">Aceito e quero começar</button>
     <p class="small muted" style="margin-top:14px;text-align:center">Seus dados ficam neste aparelho. Faça backup em Ajustes → Exportar JSON.</p>
+  </div></div>
+
+  <div id="legalModal"><div class="legal-box">
+    <div class="legal-hd"><h3 id="legalTitulo"></h3><button id="legalFechar">Fechar</button></div>
+    <div class="legal-body" id="legalCorpo"></div>
   </div></div>
 
   <section class="view active" id="view-hoje">
@@ -451,6 +488,9 @@ details pre{background:var(--bg);border:1px solid var(--border);border-radius:10
             <select class="fld" id="pAno" style="flex:1.2;text-align:left"></select>
           </div>
         </div>
+        <div><label class="f">Nome</label><input class="fld" id="pNome" style="text-align:left" autocomplete="given-name"></div>
+        <div><label class="f">Sobrenome</label><input class="fld" id="pSobrenome" style="text-align:left" autocomplete="family-name"></div>
+        <div class="full"><label class="f">Celular com DDD</label><input class="fld" type="tel" id="pTelefone" style="text-align:left" autocomplete="tel"></div>
         <div class="full"><label class="f">E-mail</label><input class="fld" type="email" id="pEmail" style="text-align:left" placeholder="voce@email.com" autocomplete="email"></div>
         <div class="full"><label class="f">Altura (cm)</label><input class="fld tnum" type="number" id="pAltura" placeholder="175"></div>
         <div><label class="f">Sexo biológico</label><select class="fld" id="pSexo" style="text-align:left"><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
@@ -789,6 +829,154 @@ const FOODS={
 };
 /* ================= ESTADO ================= */
 const APP_VERSION="1.0.0-beta";
+/* ============================================================
+   TEXTOS LEGAIS — HyperFit
+   Rascunho para validação jurídica. Versionado: se o texto mudar,
+   suba TERMOS_VERSAO para registrar novo aceite dos usuários.
+   ============================================================ */
+const TERMOS_VERSAO="2026-08-14.1";
+const CONTATO_PRIVACIDADE="privacidade@hyperfit.app";  // <<< TROCAR pelo e-mail real
+
+const TEXTO_TERMOS=`# Termos de Uso
+
+**Versão ${TERMOS_VERSAO}**
+
+## 1. O que é o HyperFit
+
+O HyperFit é um aplicativo de acompanhamento de treino, sono, hidratação, alimentação e indicadores de saúde. Ele registra o que você informa e apresenta esses dados de forma organizada, além de oferecer um assistente com inteligência artificial que lê imagens que você enviar e responde perguntas com base no seu histórico.
+
+## 2. O HyperFit não é um serviço de saúde
+
+Este aplicativo **não** presta serviço médico, nutricional, farmacêutico ou de educação física. Ele não diagnostica, não prescreve, não indica medicamento, dose ou tratamento, e não substitui consulta com profissional habilitado.
+
+Os programas de treino, as metas de calorias, macronutrientes e água são **estimativas** calculadas por fórmulas populacionais de uso geral. Elas não consideram sua condição clínica individual. Os valores de referência de exames exibidos são genéricos e **não substituem o laudo do seu laboratório nem a interpretação do seu médico**.
+
+Antes de iniciar ou alterar programa de exercícios, dieta ou qualquer conduta relacionada à sua saúde, consulte um profissional habilitado. Se você tem condição de saúde preexistente, está gestante, em tratamento ou usa medicação contínua, essa consulta é indispensável.
+
+**Em caso de emergência, procure atendimento médico imediatamente. Não use este aplicativo para isso.**
+
+## 3. Assistente com inteligência artificial
+
+O assistente pode cometer erros, inclusive ao ler imagens e ao estimar valores nutricionais. Confira sempre os dados que ele preencher automaticamente. As respostas dele são informativas e de caráter geral — não são orientação profissional individualizada.
+
+O uso do assistente é limitado por período e por aparelho. Podemos alterar esses limites a qualquer momento.
+
+## 4. Sua conta e seus dados
+
+Você é responsável pela veracidade das informações que cadastra e pelo uso do aplicativo no seu aparelho.
+
+Os registros de treino, sono, alimentação, medicação e exames ficam **armazenados no seu próprio aparelho**. Eles não são enviados aos nossos servidores. Use a função de exportação em Ajustes para fazer cópia de segurança — se você desinstalar o aplicativo, limpar os dados do navegador ou trocar de aparelho, esses registros são perdidos e não temos como recuperá-los.
+
+Os dados de cadastro (nome, telefone e e-mail) são enviados e armazenados por nós, conforme a Política de Privacidade.
+
+## 5. Uso permitido
+
+Você concorda em não: usar o aplicativo para fins ilícitos; tentar acessar dados de outros usuários; automatizar requisições ou usar o assistente de forma abusiva; copiar, redistribuir ou revender o aplicativo sem autorização.
+
+Podemos suspender o acesso de quem descumprir estes termos.
+
+## 6. Disponibilidade
+
+O aplicativo é oferecido "no estado em que se encontra". Podemos alterar funcionalidades, interromper o serviço ou encerrar o aplicativo a qualquer momento. Esta é uma versão em testes (beta) e pode conter falhas.
+
+## 7. Limitação de responsabilidade
+
+Na máxima extensão permitida pela legislação brasileira, não nos responsabilizamos por perda de dados armazenados no seu aparelho, indisponibilidade do serviço, ou decisões que você tome com base nas informações do aplicativo.
+
+Nada nestes termos afasta direitos que a lei garante a você como consumidor ou como titular de dados pessoais.
+
+## 8. Alterações
+
+Podemos alterar estes termos. Mudanças relevantes serão comunicadas no aplicativo e exigirão novo aceite.
+
+## 9. Foro e legislação
+
+Estes termos são regidos pela legislação brasileira.
+
+## 10. Contato
+
+Dúvidas sobre estes termos: **${CONTATO_PRIVACIDADE}**`;
+
+const TEXTO_PRIVACIDADE=`# Política de Privacidade
+
+**Versão ${TERMOS_VERSAO}**
+
+## 1. Quem trata seus dados
+
+O responsável pelo tratamento dos dados pessoais coletados neste aplicativo é o operador do HyperFit, que pode ser contatado em **${CONTATO_PRIVACIDADE}**.
+
+## 2. O que fica no seu aparelho e o que vem para nós
+
+Esta é a distinção mais importante desta política:
+
+**Fica somente no seu aparelho** — e nunca é enviado para nós:
+seus treinos e cargas, registros de sono, peso e composição corporal, consumo de água, refeições e macronutrientes, medicamentos e aplicações, resultados de exames, conversas com o assistente e observações do diário.
+
+**É enviado e armazenado por nós:**
+nome e sobrenome, telefone, e-mail, um identificador aleatório do aplicativo instalado, a data do cadastro, a versão dos termos aceita, e a quantidade de usos do assistente por período.
+
+**Nunca coletamos:** sua localização, sua lista de contatos, suas fotos (as imagens que você envia ao assistente são processadas para leitura e não são armazenadas por nós), nem qualquer dado de saúde vinculado ao seu nome.
+
+## 3. Por que tratamos cada dado
+
+| Dado | Finalidade | Base legal |
+|---|---|---|
+| Nome e sobrenome | Personalizar o aplicativo e o assistente | Execução de contrato |
+| E-mail e telefone | Identificar sua conta, comunicar mudanças relevantes e dar suporte | Execução de contrato |
+| Identificador do aplicativo | Aplicar limites de uso do assistente e evitar abuso | Legítimo interesse |
+| Contagem de uso | Dimensionar custo e melhorar o produto | Legítimo interesse |
+| E-mail e telefone para divulgação | Enviar novidades, conteúdos e ofertas | **Consentimento** — opcional e revogável |
+
+O envio de comunicações de divulgação depende de autorização separada, que você pode recusar sem perder acesso a nenhuma funcionalidade.
+
+## 4. O que não fazemos
+
+**Não enviamos spam.** Nunca entraremos em contato por e-mail, ligação, SMS ou WhatsApp solicitando senha, dados bancários, cartão de crédito, documentos ou qualquer informação sensível. Se receber contato assim em nosso nome, desconsidere e nos avise.
+
+**Não vendemos nem compartilhamos** seus dados pessoais com terceiros para benefício econômico.
+
+## 5. Com quem compartilhamos
+
+Usamos prestadores de serviço apenas para operar o aplicativo:
+
+- **Cloudflare** — hospedagem do serviço que recebe seu cadastro e intermedeia o assistente.
+- **Google (Gemini)** — processamento das imagens e textos enviados ao assistente. As imagens são enviadas para leitura e não são vinculadas ao seu nome nem ao seu cadastro.
+- **GitHub Pages** — hospedagem do aplicativo.
+
+Também podemos compartilhar dados quando houver obrigação legal ou ordem de autoridade competente.
+
+## 6. Se você autorizar comunicações de divulgação
+
+Caso marque a autorização opcional, seus dados de contato poderão ser usados para envio de novidades e ofertas, inclusive por meio de plataformas de publicidade como Meta e Google, na forma criptografada que essas plataformas utilizam para encontrar públicos. Você pode revogar essa autorização a qualquer momento pelo e-mail de contato.
+
+## 7. Por quanto tempo guardamos
+
+Mantemos os dados de cadastro enquanto sua conta existir e pelo prazo necessário ao cumprimento de obrigações legais. Os contadores de uso do assistente são mantidos por cerca de dois meses.
+
+## 8. Seus direitos
+
+A Lei Geral de Proteção de Dados (Lei 13.709/2018) garante a você o direito de confirmar a existência de tratamento, acessar seus dados, corrigir dados incompletos ou desatualizados, solicitar anonimização, bloqueio ou eliminação, solicitar portabilidade, revogar consentimento e obter informação sobre compartilhamento.
+
+Para exercer qualquer desses direitos, incluindo a **eliminação dos seus dados de cadastro**, escreva para **${CONTATO_PRIVACIDADE}**. Responderemos no prazo previsto na legislação.
+
+Você também pode editar nome, telefone e e-mail diretamente na tela de Ajustes do aplicativo.
+
+## 9. Segurança
+
+Adotamos medidas técnicas para proteger os dados, incluindo transmissão criptografada e acesso restrito ao painel administrativo. Nenhum sistema é totalmente imune a incidentes; caso ocorra algum que possa gerar risco relevante, comunicaremos os titulares e a Autoridade Nacional de Proteção de Dados.
+
+## 10. Menores de idade
+
+Este aplicativo não se destina a menores de 18 anos. Se identificarmos cadastro de menor, os dados serão eliminados.
+
+## 11. Alterações
+
+Podemos atualizar esta política. Mudanças relevantes serão comunicadas no aplicativo e exigirão novo aceite.
+
+## 12. Contato
+
+**${CONTATO_PRIVACIDADE}**`;
+
 /* Endereço do proxy que guarda a chave do Gemini.
    Deixe vazio para o app pedir a chave ao próprio usuário (modo avançado). */
 const PROXY_URL="https://hiperfit-ia.jonathbg.workers.dev";
@@ -1118,6 +1306,52 @@ function aplicarModelo(){
   initToday();renderModeloTreino();renderProgress();
   toast("Modelo aplicado ✔");
 }
+/* Converte o markdown simples dos textos legais em HTML. */
+function mdParaHtml(md){
+  const linhas=md.split("\n");const out=[];let tabela=false;
+  const inline=t=>esc(t).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>");
+  linhas.forEach(l=>{
+    if(/^\|/.test(l)){
+      const cels=l.split("|").slice(1,-1).map(c=>c.trim());
+      if(cels.every(c=>/^-+$/.test(c)))return;
+      if(!tabela){out.push("<table>");tabela=true;
+        out.push("<tr>"+cels.map(c=>`<th>${inline(c)}</th>`).join("")+"</tr>");return;}
+      out.push("<tr>"+cels.map(c=>`<td>${inline(c)}</td>`).join("")+"</tr>");return;
+    }
+    if(tabela){out.push("</table>");tabela=false;}
+    if(/^# /.test(l))out.push(`<h1>${inline(l.slice(2))}</h1>`);
+    else if(/^## /.test(l))out.push(`<h2>${inline(l.slice(3))}</h2>`);
+    else if(l.trim())out.push(`<p>${inline(l)}</p>`);
+  });
+  if(tabela)out.push("</table>");
+  return out.join("");
+}
+function abrirLegal(qual){
+  const m=document.getElementById("legalModal");if(!m)return;
+  document.getElementById("legalTitulo").textContent=qual==="termos"?"Termos de Uso":"Política de Privacidade";
+  document.getElementById("legalCorpo").innerHTML=mdParaHtml(qual==="termos"?TEXTO_TERMOS:TEXTO_PRIVACIDADE);
+  document.getElementById("legalCorpo").scrollTop=0;
+  m.classList.add("on");
+}
+function fecharLegal(){const m=document.getElementById("legalModal");if(m)m.classList.remove("on");}
+
+/* Envia o cadastro ao servidor. Falha de rede não trava o usuário —
+   o cadastro fica marcado como pendente e é reenviado na próxima abertura. */
+async function enviarCadastro(reg){
+  if(!proxyAtivo())return false;
+  try{
+    const r=await fetch(`${PROXY_URL}/cadastro`,{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({...reg,instalacao:instalacaoId()})});
+    if(r.ok){S.settings.cadastroEnviado=true;save(true);return true;}
+  }catch(e){}
+  S.settings.cadastroEnviado=false;save(true);return false;
+}
+function reenviarCadastroPendente(){
+  const c=S.settings.cadastro;
+  if(!c||S.settings.cadastroEnviado)return;
+  enviarCadastro(c);
+}
+
 /* ---------- tela de boas-vindas (primeiro uso) ---------- */
 function precisaBoasVindas(){
   return !S.settings.onboardDone;
@@ -1158,13 +1392,22 @@ function abrirBoasVindas(){
   el.classList.add("on");
   document.body.style.overflow="hidden";
   document.getElementById("bvSalvar").onclick=salvarBoasVindas;
+  document.getElementById("verTermos").onclick=()=>abrirLegal("termos");
+  document.getElementById("verPriv").onclick=()=>abrirLegal("privacidade");
 }
 function salvarBoasVindas(){
   const g=id=>document.getElementById(id).value.trim();
   const erro=document.getElementById("bvErro");
   const mostrar=m=>{erro.textContent=m;erro.classList.add("on");erro.scrollIntoView({block:"center"});};
+  const nome=g("bvNome"),sobrenome=g("bvSobrenome");
+  if(nome.length<2)return mostrar("Digite seu nome.");
+  if(sobrenome.length<2)return mostrar("Digite seu sobrenome.");
+  const tel=g("bvTelefone").replace(/\D/g,"");
+  if(tel.length<10||tel.length>11)return mostrar("Digite seu celular com DDD (10 ou 11 dígitos).");
   const email=g("bvEmail");
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email))return mostrar("Digite um e-mail válido.");
+  if(!document.getElementById("bvAceiteTermos").checked)
+    return mostrar("Para usar o aplicativo é preciso aceitar os Termos de Uso e a Política de Privacidade.");
   const d=+g("bvDia"),mo=+g("bvMes"),an=+g("bvAno");
   if(!d||!mo||!an)return mostrar("Complete sua data de nascimento (dia, mês e ano).");
   const alt=parseFloat(g("bvAltura").replace(",","."));
@@ -1173,7 +1416,10 @@ function salvarBoasVindas(){
   if(!(peso>=30&&peso<=300))return mostrar("Informe seu peso atual em quilos.");
   erro.classList.remove("on");
 
+  const mkt=document.getElementById("bvAceiteMkt").checked;
   S.settings.email=email;
+  S.settings.cadastro={nome,sobrenome,email,telefone:tel,aceiteTermos:true,aceiteMarketing:mkt,
+    versaoTermos:TERMOS_VERSAO,aceitoEm:new Date().toISOString()};
   S.settings.perfil={
     nascimento:`${an}-${String(mo).padStart(2,"0")}-${String(d).padStart(2,"0")}`,
     alturaCm:alt,sexo:g("bvSexo")||"M",objetivo:g("bvObjetivo")||"manutencao"};
@@ -1188,6 +1434,7 @@ function salvarBoasVindas(){
   if(c&&c.ok){S.settings.nutriMeta={kcal:c.kcal,prot:c.prot,carbo:c.carbo,gord:c.gord};S.settings.aguaMetaMl=c.aguaMl;S.settings.metaAuto=true;}
   S.settings.onboardDone=true;
   save();
+  enviarCadastro(S.settings.cadastro);
   fecharBoasVindas();
   initToday();initDiary();renderWater();renderMeds();renderExames();renderPerfil();renderModeloTreino();renderNutri();renderProgress();
   toast("Tudo pronto ✔");
@@ -1201,7 +1448,9 @@ function renderPerfil(){
   const pf=PERFIL();
   const set=(id,v)=>{const el=document.getElementById(id);if(el&&v!=null)el.value=v;};
   preencherCamposNascimento(pf.nascimento);
-  set("pEmail",S.settings.email||"");
+  const cad=S.settings.cadastro||{};
+  set("pNome",cad.nome||"");set("pSobrenome",cad.sobrenome||"");set("pTelefone",cad.telefone||"");
+  set("pEmail",S.settings.email||cad.email||"");
   set("pAltura",pf.alturaCm||"");
   set("pSexo",pf.sexo||"M");
   set("pObjetivo",pf.objetivo||"manutencao");
@@ -1235,8 +1484,17 @@ function salvarPerfil(){
   const fator=parseFloat(String(g("pAguaFator")).replace(",","."));
   S.settings.perfil={nascimento:nascimentoISO(),alturaCm:alt>0?alt:null,sexo:g("pSexo")||"M",objetivo:g("pObjetivo")||"manutencao"};
   S.settings.aguaFator=fator>0?fator:AGUA_FATOR_DEFAULT;
-  const em=(document.getElementById("pEmail")||{}).value;
-  if(em!=null)S.settings.email=em.trim();
+  const gv=id=>((document.getElementById(id)||{}).value||"").trim();
+  const em=gv("pEmail");
+  if(em)S.settings.email=em;
+  if(S.settings.cadastro){
+    const c=S.settings.cadastro,antes=JSON.stringify(c);
+    if(gv("pNome"))c.nome=gv("pNome");
+    if(gv("pSobrenome"))c.sobrenome=gv("pSobrenome");
+    if(gv("pTelefone"))c.telefone=gv("pTelefone").replace(/\D/g,"");
+    if(em)c.email=em;
+    if(JSON.stringify(c)!==antes)enviarCadastro(c);   // mantém o servidor em dia
+  }
   save();renderPerfil();toast("Perfil salvo ✔");
 }
 function aplicarMetasCalculadas(){
@@ -1983,7 +2241,7 @@ function chatScroll(){
     im.addEventListener("error",chatNoFim,{once:true});
   });
 }
-function renderChat(){const log=document.getElementById("chatLog");if(!S.chat.length){log.innerHTML=`<div class="msg bot">Bom treino 💪 Sou seu coach.\nPosso: dar a **leitura do dia** (libera ou segura o treino pelo seu sono), montar o **treino de hoje** com as cargas, ler **prints** que você anexar 📎 (sono, balança, alimentação) e **atualizar sua base** sozinho.\n\nToque numa sugestão ou me pergunte.</div>`;}else log.innerHTML=S.chat.map(m=>`<div class="msg ${m.role==='user'?'me':'bot'}">${fmtMsg(m.text)}${m.img?`<img src="${m.img}">`:''}</div>`).join("");chatScroll();}
+function renderChat(){const log=document.getElementById("chatLog");if(!S.chat.length){log.innerHTML=`<div class="msg bot">Bom treino${(S.settings.cadastro&&S.settings.cadastro.nome)?", "+esc(S.settings.cadastro.nome):""} 💪 Sou seu coach.\nPosso: dar a **leitura do dia** (libera ou segura o treino pelo seu sono), montar o **treino de hoje** com as cargas, ler **prints** que você anexar 📎 (sono, balança, alimentação) e **atualizar sua base** sozinho.\n\nToque numa sugestão ou me pergunte.</div>`;}else log.innerHTML=S.chat.map(m=>`<div class="msg ${m.role==='user'?'me':'bot'}">${fmtMsg(m.text)}${m.img?`<img src="${m.img}">`:''}</div>`).join("");chatScroll();}
 function fmtMsg(t){return (t||"").replace(/</g,"&lt;").replace(/\*\*(.+?)\*\*/g,"<b>$1</b>");}
 const SUGGEST=["Posso treinar hoje?","Qual é o treino de hoje?","Meu progresso","O que subir de carga?"];
 function renderSuggest(){document.getElementById("suggestBar").innerHTML=SUGGEST.map(s=>`<button>${s}</button>`).join("");document.querySelectorAll("#suggestBar button").forEach(b=>b.onclick=()=>{document.getElementById("chatText").value=b.textContent;sendChat();});}
@@ -2080,7 +2338,7 @@ function buildContext(){const next=nextLetter(),w=PROGRAMA[next],r=readiness();c
 const examesCtx=EXAMES().map(x=>{const rs=exResultados(x.id);const u=rs.length?rs[rs.length-1]:null;
   return u?`${x.nome}: ${u.valor}${x.unidade||''} (${u.data}) ref ${exFaixa(x)} -> ${exStatus(x,u.valor)}`:null;}).filter(Boolean).join("\n")||"nenhum exame registrado";
 const medsCtx=MEDS().filter(m=>m.ativo!==false).map(m=>{const ap=medAplicacoes(m.id);const u=ap.length?ap[ap.length-1]:null;return `${m.nome} (${m.via||'IM'}${m.freqDias?', a cada '+m.freqDias+'d':''}): ${u?'última '+u.data+' '+(u.dose||'?')+(m.unidade||'')+' em '+(u.local||'-'):'sem registro'}`;}).join("\n")||"nenhum medicamento cadastrado";return`DATA DE HOJE: ${todayISO()} (${hojeExtenso()}). Use SEMPRE esta data — não estime a data por conta própria.
-Você é um coach pessoal (personal trainer + cientista do exercício) do usuário deste aplicativo. Responda em português do Brasil, de forma direta e prática, com base nos dados registrados abaixo.
+Você é o coach pessoal (personal trainer + cientista do exercício) de ${(S.settings.cadastro&&S.settings.cadastro.nome)||"quem usa este aplicativo"}. Trate a pessoa pelo primeiro nome. Responda em português do Brasil, de forma direta e prática, com base nos dados registrados abaixo.
 REGRAS: nunca prescreva medicamento, dose ou ajuste de ciclo hormonal; nunca faça diagnóstico. Se algum dado de saúde estiver fora da faixa de referência, aponte e oriente a procurar o médico responsável.
 REGRAS: Dupla progressão (topo da faixa em TODAS as séries de trabalho -> sobe carga; aquecimento não conta). RIR compostos 1-3, isoladores 0-1. Ciclo A->B->C->D->E->F->folga. Cardio Z2 20-30min após A,C,E. Gate: pontuação>60 e rec>50%; upper flexível se profundo/REM bons; perna/estreia exige gate cheio; ciclos<=2 ou profundo~0 -> não treinar.
 ESTILO: direto, científico, decide sem perguntar preferência. Respostas curtas em markdown com **negrito**. Usuário reporta séries JUNTAS (peso x reps).
@@ -2369,11 +2627,13 @@ document.getElementById("impBtn").onclick=()=>document.getElementById("impFile")
 document.getElementById("impFile").onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{S=Object.assign(freshState(),JSON.parse(rd.result));save();location.reload();}catch(err){toast("Arquivo inválido");}};rd.readAsText(f);};
 document.getElementById("clearHistBtn").onclick=()=>{if(confirm("Zerar todo o histórico (treinos, diário, refeições e conversa) e recomeçar do zero agora? Seus exercícios serão mantidos.")){S.sessions=[];S.diary=[];S.meals=[];S.chat=[];S.draft=null;if(S.settings.progPeriod)S.settings.progPeriod.start="";save();location.reload();}};
 document.getElementById("resetBtn").onclick=()=>{if(confirm("Restaurar TUDO ao estado original da planilha? Isto apaga seus registros E volta os exercícios ao padrão.")){S=freshState();save();location.reload();}};
+document.getElementById("legalFechar").onclick=fecharLegal;
+document.getElementById("legalModal").addEventListener("click",e=>{if(e.target.id==="legalModal")fecharLegal();});
 document.getElementById("mtAplicar").onclick=aplicarModelo;
 document.getElementById("pSalvar").onclick=salvarPerfil;
 document.getElementById("pAplicar").onclick=aplicarMetasCalculadas;
 preencherNascimento();
-["pEmail","pAltura","pSexo","pObjetivo","pAguaFator"].forEach(id=>{
+["pNome","pSobrenome","pTelefone","pEmail","pAltura","pSexo","pObjetivo","pAguaFator"].forEach(id=>{
   const el=document.getElementById(id);
   if(el)el.addEventListener("change",()=>{salvarPerfil();});
 });
@@ -2487,7 +2747,7 @@ document.getElementById("fbHelp").textContent=`1. console.firebase.google.com �
 /* ================= BOOT ================= */
 applyTheme();document.getElementById("geminiKey").value=S.settings.geminiKey||"";
 renderWater();renderMeds();renderExames();renderUsoArmz();renderPerfil();renderModeloTreino();
-if(precisaBoasVindas())abrirBoasVindas();
+if(precisaBoasVindas())abrirBoasVindas();else reenviarCadastroPendente();
 initToday();initDiary();renderChat();renderSyncUI();
 /* Android pode encerrar a aba a qualquer momento ao trocar de app.
    Grava imediatamente sempre que a tela é escondida. */
