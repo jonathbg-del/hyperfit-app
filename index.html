@@ -142,6 +142,18 @@ main{max-width:640px;margin:0 auto;padding:16px 16px 24px}
 .exbtns button{flex:1;background:var(--elev);border:1px solid var(--border);color:var(--txt);border-radius:10px;padding:9px 4px;font-size:12.5px;font-weight:700;cursor:pointer}
 .exest{font-size:10.5px;color:var(--muted);font-weight:700}
 .perfil-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+#bemvindo{position:fixed;inset:0;z-index:9999;background:var(--bg);overflow-y:auto;display:none}
+#bemvindo.on{display:block}
+.bv-wrap{max-width:520px;margin:0 auto;padding:34px 20px 40px}
+.bv-logo{font-size:26px;font-weight:800;letter-spacing:-.5px;margin-bottom:6px}
+.bv-logo span{color:var(--accent)}
+.bv-sub{color:var(--muted);font-size:14.5px;margin-bottom:26px;line-height:1.55}
+.bv-passo{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:14px}
+.bv-passo h3{font-size:15.5px;margin-bottom:3px;display:flex;align-items:center;gap:9px}
+.bv-passo h3 .num{width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:0 0 22px}
+.bv-passo .hint{font-size:12.5px;color:var(--muted);margin-bottom:12px;line-height:1.5}
+.bv-erro{color:#FF6A5E;font-size:12.5px;margin-top:8px;display:none}
+.bv-erro.on{display:block}
 .perfil-grid .full{grid-column:1/-1}
 .calcbox{background:var(--elev);border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:12px}
 .calcbox .lin{display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;font-size:13.5px;border-bottom:1px solid var(--border)}
@@ -248,6 +260,50 @@ details pre{background:var(--bg);border:1px solid var(--border);border-radius:10
 
 <main>
   <!-- HOJE -->
+  <div id="bemvindo"><div class="bv-wrap">
+    <div class="bv-logo">Hyper<span>Fit</span></div>
+    <p class="bv-sub">Três passos rápidos e o app já abre configurado do seu jeito. Dá para mudar tudo depois em Ajustes.</p>
+
+    <div class="bv-passo">
+      <h3><span class="num">1</span> Seu e-mail</h3>
+      <p class="hint">Fica guardado só neste aparelho, para identificar seus dados. Não enviamos nada para lugar nenhum.</p>
+      <input class="fld" type="email" id="bvEmail" style="text-align:left" placeholder="voce@email.com" autocomplete="email" inputmode="email">
+    </div>
+
+    <div class="bv-passo">
+      <h3><span class="num">2</span> Seu perfil</h3>
+      <p class="hint">Serve para calcular sua meta de calorias, macros e água a partir do seu peso.</p>
+      <label class="f">Data de nascimento</label>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <select class="fld" id="bvDia" style="flex:1;text-align:left"></select>
+        <select class="fld" id="bvMes" style="flex:1.6;text-align:left"></select>
+        <select class="fld" id="bvAno" style="flex:1.2;text-align:left"></select>
+      </div>
+      <div class="perfil-grid" style="margin-top:0">
+        <div><label class="f">Altura (cm)</label><input class="fld tnum" type="number" id="bvAltura" placeholder="175"></div>
+        <div><label class="f">Peso atual (kg)</label><input class="fld tnum" type="number" step="0.1" id="bvPeso" placeholder="80"></div>
+        <div><label class="f">Sexo biológico</label><select class="fld" id="bvSexo" style="text-align:left"><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
+        <div><label class="f">Objetivo</label><select class="fld" id="bvObjetivo" style="text-align:left">
+          <option value="cutting">Perder gordura</option><option value="manutencao">Manter peso</option><option value="bulking">Ganhar massa</option>
+        </select></div>
+      </div>
+    </div>
+
+    <div class="bv-passo">
+      <h3><span class="num">3</span> Seu treino</h3>
+      <p class="hint">Escolha um programa pronto. Se você já tem uma ficha, dá para mandar uma foto dela ao Coach depois que entrar — ele monta tudo sozinho.</p>
+      <div class="perfil-grid" style="margin-top:0">
+        <div><label class="f">Seu nível</label><select class="fld" id="bvNivel" style="text-align:left"></select></div>
+        <div><label class="f">Dias por semana</label><select class="fld" id="bvDias" style="text-align:left"></select></div>
+      </div>
+      <div id="bvPreview"></div>
+    </div>
+
+    <p class="bv-erro" id="bvErro"></p>
+    <button class="btn" id="bvSalvar" style="margin-top:6px;width:100%">Salvar e começar</button>
+    <p class="small muted" style="margin-top:14px;text-align:center">Seus dados ficam neste aparelho. Faça backup em Ajustes → Exportar JSON.</p>
+  </div></div>
+
   <section class="view active" id="view-hoje">
     <div id="readyBox"></div>
     <div class="card" style="margin-top:12px">
@@ -395,6 +451,7 @@ details pre{background:var(--bg);border:1px solid var(--border);border-radius:10
             <select class="fld" id="pAno" style="flex:1.2;text-align:left"></select>
           </div>
         </div>
+        <div class="full"><label class="f">E-mail</label><input class="fld" type="email" id="pEmail" style="text-align:left" placeholder="voce@email.com" autocomplete="email"></div>
         <div class="full"><label class="f">Altura (cm)</label><input class="fld tnum" type="number" id="pAltura" placeholder="175"></div>
         <div><label class="f">Sexo biológico</label><select class="fld" id="pSexo" style="text-align:left"><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
         <div><label class="f">Objetivo</label><select class="fld" id="pObjetivo" style="text-align:left">
@@ -449,16 +506,9 @@ details pre{background:var(--bg);border:1px solid var(--border);border-radius:10
       <p class="small muted" style="margin-top:6px">Apaga treinos, diário, refeições e conversa — <b>mantém seus exercícios</b>. Começa do zero a partir de agora.</p>
       <button class="btn secondary" id="resetBtn" style="margin-top:10px;color:var(--down)">Apagar tudo e restaurar padrões</button>
     </div>
-    <div class="card">
-      <h2 style="font-size:16px">Sincronizar entre aparelhos (Firebase)</h2>
-      <p class="small muted" style="margin-top:4px">Entre com o Google e seus dados sincronizam sozinhos em qualquer aparelho. Funciona na versão hospedada (GitHub Pages), não neste preview.</p>
-      <div id="syncStatus" class="small" style="margin:10px 0;color:var(--muted)"></div>
-      <div id="syncControls"></div>
-      <details style="margin-top:10px"><summary>Passo a passo de configuração</summary><pre id="fbHelp"></pre></details>
-    </div>
-    <div class="card">
-      <h2 style="font-size:16px">Publicar no celular (PWA)</h2>
-      <details><summary>Como colocar online e instalar</summary><pre id="deployHelp"></pre></details>
+    <div class="card" style="display:none">
+      <div id="syncStatus"></div><div id="syncControls"></div>
+      <pre id="fbHelp" style="display:none"></pre><pre id="deployHelp" style="display:none"></pre>
     </div>
     <p class="small muted" style="text-align:center;margin-top:16px">HyperFit · versão <span id="appVerFoot"></span></p>
   </section>
@@ -1068,10 +1118,90 @@ function aplicarModelo(){
   initToday();renderModeloTreino();renderProgress();
   toast("Modelo aplicado ✔");
 }
+/* ---------- tela de boas-vindas (primeiro uso) ---------- */
+function precisaBoasVindas(){
+  return !S.settings.onboardDone;
+}
+function abrirBoasVindas(){
+  const el=document.getElementById("bemvindo");if(!el)return;
+  // nascimento
+  const dia=document.getElementById("bvDia"),mes=document.getElementById("bvMes"),ano=document.getElementById("bvAno");
+  const anoAtual=new Date().getFullYear();
+  mes.innerHTML=`<option value="">Mês</option>`+MESES_PT.map((m,i)=>`<option value="${i+1}">${m}</option>`).join("");
+  const anos=[];for(let a=anoAtual-12;a>=anoAtual-100;a--)anos.push(a);
+  ano.innerHTML=`<option value="">Ano</option>`+anos.map(a=>`<option value="${a}">${a}</option>`).join("");
+  const recarregarDias=()=>{
+    const atual=dia.value,n=diasNoMes(+mes.value,+ano.value);
+    dia.innerHTML=`<option value="">Dia</option>`+Array.from({length:n},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join("");
+    dia.value=(atual&&+atual<=n)?atual:"";
+  };
+  recarregarDias();
+  [mes,ano].forEach(e=>e.addEventListener("change",recarregarDias));
+  // treino
+  const nv=document.getElementById("bvNivel"),dd=document.getElementById("bvDias");
+  nv.innerHTML=Object.entries(NIVEIS_TREINO).map(([k,v])=>`<option value="${k}">${v.rotulo}</option>`).join("");
+  dd.innerHTML=Object.keys(MODELOS_TREINO).map(k=>`<option value="${k}">${k} dias</option>`).join("");
+  nv.value="iniciante";dd.value="3";
+  const prev=()=>{
+    const box=document.getElementById("bvPreview");
+    const mod=MODELOS_TREINO[dd.value],niv=NIVEIS_TREINO[nv.value];
+    const prog=montarPrograma(dd.value,nv.value);
+    if(!prog){box.innerHTML="";return;}
+    const series=Object.values(prog).reduce((a,d)=>a+d.exercicios.reduce((b,e)=>b+e.sets,0),0);
+    box.innerHTML=`<div class="calcbox"><div class="hd">${esc(mod.rotulo)}</div>
+      <p class="small muted" style="margin:0 0 8px">${esc(niv.descricao)}</p>
+      ${Object.entries(prog).map(([l,d])=>`<div class="lin"><span><b>${l}</b> · ${esc(d.nome)}</span><b>${d.exercicios.length} ex.</b></div>`).join("")}
+      <div class="lin"><span>Volume semanal</span><b>${series} séries</b></div></div>`;
+  };
+  [nv,dd].forEach(e=>e.addEventListener("change",prev));
+  prev();
+  el.classList.add("on");
+  document.body.style.overflow="hidden";
+  document.getElementById("bvSalvar").onclick=salvarBoasVindas;
+}
+function salvarBoasVindas(){
+  const g=id=>document.getElementById(id).value.trim();
+  const erro=document.getElementById("bvErro");
+  const mostrar=m=>{erro.textContent=m;erro.classList.add("on");erro.scrollIntoView({block:"center"});};
+  const email=g("bvEmail");
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email))return mostrar("Digite um e-mail válido.");
+  const d=+g("bvDia"),mo=+g("bvMes"),an=+g("bvAno");
+  if(!d||!mo||!an)return mostrar("Complete sua data de nascimento (dia, mês e ano).");
+  const alt=parseFloat(g("bvAltura").replace(",","."));
+  if(!(alt>=100&&alt<=250))return mostrar("Informe sua altura em centímetros (entre 100 e 250).");
+  const peso=parseFloat(g("bvPeso").replace(",","."));
+  if(!(peso>=30&&peso<=300))return mostrar("Informe seu peso atual em quilos.");
+  erro.classList.remove("on");
+
+  S.settings.email=email;
+  S.settings.perfil={
+    nascimento:`${an}-${String(mo).padStart(2,"0")}-${String(d).padStart(2,"0")}`,
+    alturaCm:alt,sexo:g("bvSexo")||"M",objetivo:g("bvObjetivo")||"manutencao"};
+  // peso entra no diário — é a base de todos os cálculos
+  const hoje=diaryFor(todayISO());hoje.pesoKg=peso;
+  // programa escolhido
+  const nivel=g("bvNivel"),dias=g("bvDias");
+  const prog=montarPrograma(dias,nivel);
+  if(prog){S.program=prog;S.settings.modeloTreino={nivel,dias:+dias};S.draft=null;PROGRAMA=prog;CICLO=Object.keys(prog);curLetra=CICLO[0];}
+  // metas calculadas a partir do que acabou de ser preenchido
+  const c=calcularMetas();
+  if(c&&c.ok){S.settings.nutriMeta={kcal:c.kcal,prot:c.prot,carbo:c.carbo,gord:c.gord};S.settings.aguaMetaMl=c.aguaMl;S.settings.metaAuto=true;}
+  S.settings.onboardDone=true;
+  save();
+  fecharBoasVindas();
+  initToday();initDiary();renderWater();renderMeds();renderExames();renderPerfil();renderModeloTreino();renderNutri();renderProgress();
+  toast("Tudo pronto ✔");
+}
+function fecharBoasVindas(){
+  const el=document.getElementById("bemvindo");
+  if(el)el.classList.remove("on");
+  document.body.style.overflow="";
+}
 function renderPerfil(){
   const pf=PERFIL();
   const set=(id,v)=>{const el=document.getElementById(id);if(el&&v!=null)el.value=v;};
   preencherCamposNascimento(pf.nascimento);
+  set("pEmail",S.settings.email||"");
   set("pAltura",pf.alturaCm||"");
   set("pSexo",pf.sexo||"M");
   set("pObjetivo",pf.objetivo||"manutencao");
@@ -1105,6 +1235,8 @@ function salvarPerfil(){
   const fator=parseFloat(String(g("pAguaFator")).replace(",","."));
   S.settings.perfil={nascimento:nascimentoISO(),alturaCm:alt>0?alt:null,sexo:g("pSexo")||"M",objetivo:g("pObjetivo")||"manutencao"};
   S.settings.aguaFator=fator>0?fator:AGUA_FATOR_DEFAULT;
+  const em=(document.getElementById("pEmail")||{}).value;
+  if(em!=null)S.settings.email=em.trim();
   save();renderPerfil();toast("Perfil salvo ✔");
 }
 function aplicarMetasCalculadas(){
@@ -2241,7 +2373,7 @@ document.getElementById("mtAplicar").onclick=aplicarModelo;
 document.getElementById("pSalvar").onclick=salvarPerfil;
 document.getElementById("pAplicar").onclick=aplicarMetasCalculadas;
 preencherNascimento();
-["pAltura","pSexo","pObjetivo","pAguaFator"].forEach(id=>{
+["pEmail","pAltura","pSexo","pObjetivo","pAguaFator"].forEach(id=>{
   const el=document.getElementById(id);
   if(el)el.addEventListener("change",()=>{salvarPerfil();});
 });
@@ -2355,6 +2487,7 @@ document.getElementById("fbHelp").textContent=`1. console.firebase.google.com �
 /* ================= BOOT ================= */
 applyTheme();document.getElementById("geminiKey").value=S.settings.geminiKey||"";
 renderWater();renderMeds();renderExames();renderUsoArmz();renderPerfil();renderModeloTreino();
+if(precisaBoasVindas())abrirBoasVindas();
 initToday();initDiary();renderChat();renderSyncUI();
 /* Android pode encerrar a aba a qualquer momento ao trocar de app.
    Grava imediatamente sempre que a tela é escondida. */
