@@ -333,6 +333,19 @@ details pre{background:var(--bg);border:1px solid var(--border);border-radius:10
 
     <p class="bv-erro" id="bvErro"></p>
     <button class="btn" id="bvSalvar" style="margin-top:6px;width:100%">Aceito e quero começar</button>
+
+    <div id="bvRecBox" style="margin-top:12px;text-align:center">
+      <button type="button" id="bvRecLink" style="background:none;border:0;padding:0;color:var(--accent);font:inherit;font-size:13px;text-decoration:underline;cursor:pointer">Já me cadastrei — recuperar meus dados</button>
+      <div id="bvRecForm" style="display:none;margin-top:12px;text-align:left">
+        <p class="hint" style="margin:0 0 8px">Se você já usava o HyperFit neste celular ou em outro, traga tudo de volta. Confirmamos com o e-mail e os 4 últimos dígitos do celular do cadastro.</p>
+        <label class="f">E-mail do cadastro</label>
+        <input class="fld" type="email" id="bvRecEmail" style="text-align:left" placeholder="voce@email.com" autocomplete="email" inputmode="email">
+        <label class="f" style="margin-top:8px">4 últimos dígitos do celular</label>
+        <input class="fld" type="tel" id="bvRecTel" style="text-align:left" placeholder="0000" inputmode="numeric" maxlength="4">
+        <button class="btn" id="bvRecBtn" style="margin-top:10px;width:100%">Recuperar meus dados</button>
+        <p class="bv-erro" id="bvRecErro"></p>
+      </div>
+    </div>
     <p class="small muted" style="margin-top:14px;text-align:center">Seus dados ficam neste aparelho. Faça backup em Ajustes → Exportar JSON.</p>
   </div></div>
 
@@ -1122,6 +1135,7 @@ function save(silent){
     try{
       localStorage.setItem(KEY,JSON.stringify(S));
       if(!silent&&typeof cloudAutoPush==="function")cloudAutoPush();
+      if(typeof agendarBackupNuvem==="function")agendarBackupNuvem();
       return true;
     }catch(e){
       const cota=e&&(e.name==="QuotaExceededError"||e.name==="NS_ERROR_DOM_QUOTA_REACHED"||e.code===22||e.code===1014);
@@ -1392,6 +1406,7 @@ function abrirBoasVindas(){
   el.classList.add("on");
   document.body.style.overflow="hidden";
   document.getElementById("bvSalvar").onclick=salvarBoasVindas;
+  ligarRecuperacaoBoasVindas();
   document.getElementById("verTermos").onclick=()=>abrirLegal("termos");
   document.getElementById("verPriv").onclick=()=>abrirLegal("privacidade");
 }
@@ -1435,6 +1450,8 @@ function salvarBoasVindas(){
   S.settings.onboardDone=true;
   save();
   enviarCadastro(S.settings.cadastro);
+  pedirPersistencia();
+  enviarBackupNuvem(false);
   fecharBoasVindas();
   initToday();initDiary();renderWater();renderMeds();renderExames();renderPerfil();renderModeloTreino();renderNutri();renderProgress();
   toast("Tudo pronto ✔");
@@ -2744,6 +2761,185 @@ document.getElementById("fbHelp").textContent=`1. console.firebase.google.com �
 7. Abra o app no GitHub Pages, Ajustes > Entrar com Google. Pronto:
    os dados sincronizam sozinhos em todos os aparelhos com a mesma conta.`;
 
+/* ================= BACKUP AUTOMÁTICO NA NUVEM =================
+   Manda uma cópia do estado do app para o Worker, que grava no KV da
+   Cloudflare. O dado local continua sendo a fonte da verdade — isto é rede
+   de segurança para quando o navegador limpa o armazenamento ou a pessoa
+   troca de aparelho.
+
+   O plano grátis do KV dá 1.000 gravações por dia na conta inteira, então o
+   envio é econômico de propósito:
+     • só sai quando algo mudou (compara um hash do estado);
+     • no máximo 1 envio a cada 3 minutos por aparelho;
+     • ao sair do app, no máximo 1 a cada 1 minuto.
+   Perder até 3 minutos de registro na nuvem não custa nada: o aparelho já
+   gravou tudo localmente no mesmo instante.
+
+   Cada instalação tem um token secreto guardado aqui; sem ele o Worker não
+   entrega nem aceita o backup daquele id.
+   ============================================================== */
+const BK_TK_KEY="hyperfit_backup_tk";
+const BK_EM_KEY="hyperfit_backup_em";
+const BK_DEBOUNCE=20000;      // espera depois do último salvamento
+const BK_MIN=180000;          // intervalo mínimo entre dois envios
+const BK_MIN_SAIDA=60000;     // idem, quando o app está sendo fechado
+let bkTimer=null,bkHash="",bkOcupado=false,bkUltimo=0;
+
+/* Token desta instalação — nasce aqui, nunca vai para a tela. */
+function tokenBackup(){
+  let t=null;
+  try{t=localStorage.getItem(BK_TK_KEY);}catch(e){}
+  if(!t||!/^[A-Za-z0-9_-]{16,80}$/.test(t)){
+    const r=(crypto&&crypto.randomUUID)?crypto.randomUUID().replace(/-/g,""):(Date.now().toString(36)+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));
+    t="t_"+r.slice(0,38);
+    try{localStorage.setItem(BK_TK_KEY,t);}catch(e){}
+  }
+  return t;
+}
+
+/* Pede ao navegador para não apagar os dados quando o espaço apertar. */
+async function pedirPersistencia(){
+  try{
+    if(navigator.storage&&navigator.storage.persist){
+      if(navigator.storage.persisted&&await navigator.storage.persisted())return true;
+      return await navigator.storage.persist();
+    }
+  }catch(e){}
+  return false;
+}
+
+/* Cópia enxuta do estado: sem a chave de IA do usuário e sem as imagens do
+   chat (que são pesadas e não fazem falta na restauração). */
+function coletarDadosBackup(){
+  let d;
+  try{d=JSON.parse(JSON.stringify(S));}catch(e){return null;}
+  if(d.settings){delete d.settings.geminiKey;}
+  if(Array.isArray(d.chat))d.chat.forEach(m=>{if(m&&m.img)delete m.img;});
+  return d;
+}
+
+function hashRapidoBackup(s){
+  let h=0;
+  for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;
+  return h.toString(36);
+}
+
+async function enviarBackupNuvem(keepalive,forcar){
+  if(!proxyAtivo())return false;
+  if(bkOcupado)return false;
+
+  const agora=Date.now();
+  const minimo=keepalive?BK_MIN_SAIDA:BK_MIN;
+  if(!forcar&&bkUltimo&&agora-bkUltimo<minimo){
+    // cedo demais para gastar outra gravação: reagenda para quando puder
+    if(!keepalive)agendarBackupNuvem(BK_MIN-(agora-bkUltimo)+1000);
+    return false;
+  }
+
+  const dados=coletarDadosBackup();
+  if(!dados)return false;
+  const texto=JSON.stringify(dados);
+  const h=hashRapidoBackup(texto);
+  if(h===bkHash)return false;                 // nada mudou, não gasta gravação
+  if(texto.length>5000000){
+    console.warn("Backup maior que o limite de 5 MB — não enviado.");
+    return false;
+  }
+
+  const c=(S.settings&&S.settings.cadastro)||{};
+  const corpo=JSON.stringify({
+    instalacao:instalacaoId(),
+    token:tokenBackup(),
+    meta:{
+      email:String(c.email||(S.settings&&S.settings.email)||"").trim().toLowerCase(),
+      tel4:String(c.telefone||"").replace(/\D/g,"").slice(-4)
+    },
+    dados
+  });
+
+  bkOcupado=true;
+  try{
+    const r=await fetch(PROXY_URL+"/backup",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:corpo,
+      keepalive:!!keepalive          // >64 KB o navegador recusa; o debounce já cobre
+    });
+    if(r.ok){
+      bkHash=h;bkUltimo=Date.now();
+      try{localStorage.setItem(BK_EM_KEY,new Date().toISOString());}catch(e){}
+      return true;
+    }
+  }catch(e){
+    // silencioso: o dado local continua válido, tenta no próximo salvamento
+  }finally{bkOcupado=false;}
+  return false;
+}
+
+function agendarBackupNuvem(ms){
+  clearTimeout(bkTimer);
+  bkTimer=setTimeout(()=>enviarBackupNuvem(false),ms||BK_DEBOUNCE);
+}
+
+/* Traz tudo de volta em um aparelho novo (ou depois de uma limpeza). */
+async function recuperarBackupNuvem(email,tel4){
+  if(!proxyAtivo())return{ok:false,erro:"servidor não configurado"};
+  let j={};
+  try{
+    const r=await fetch(PROXY_URL+"/recuperar",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({email:String(email||"").trim().toLowerCase(),tel4:String(tel4||"").replace(/\D/g,"")})
+    });
+    j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.ok){
+      const m={"nao encontrado":"Não achei cadastro com esse e-mail.",
+               "nao confere":"Os 4 dígitos não batem com o celular do cadastro.",
+               "muitas tentativas":"Muitas tentativas. Espere uma hora e tente de novo.",
+               "email invalido":"Digite um e-mail válido.",
+               "telefone invalido":"Digite os 4 últimos dígitos do celular."};
+      return{ok:false,erro:m[j.erro]||"Não consegui recuperar agora. Tente mais tarde."};
+    }
+  }catch(e){return{ok:false,erro:"Sem conexão com o servidor."};}
+  if(!j.dados)return{ok:false,erro:"Achei o cadastro, mas ainda não há backup salvo."};
+  try{
+    /* Troca também o estado em memória: o app grava sozinho ao sair da tela
+       (pagehide/blur), e sem isto o save do recarregamento sobrescreveria
+       o backup recém-baixado com o estado vazio deste aparelho. */
+    S=Object.assign(freshState(),j.dados);
+    localStorage.setItem(KEY,JSON.stringify(S));
+    localStorage.setItem("hyperfit_install",j.instalacao);
+    if(j.token)localStorage.setItem(BK_TK_KEY,j.token);
+  }catch(e){return{ok:false,erro:"Não consegui gravar os dados neste aparelho."};}
+  return{ok:true};
+}
+
+/* Liga o link "já me cadastrei" da tela de boas-vindas. */
+function ligarRecuperacaoBoasVindas(){
+  const link=document.getElementById("bvRecLink");
+  const form=document.getElementById("bvRecForm");
+  const btn=document.getElementById("bvRecBtn");
+  const erro=document.getElementById("bvRecErro");
+  if(!link||!form||!btn)return;
+  link.onclick=()=>{
+    const abrir=form.style.display==="none";
+    form.style.display=abrir?"block":"none";
+    if(abrir)setTimeout(()=>{const e=document.getElementById("bvRecEmail");if(e)e.focus();},60);
+  };
+  btn.onclick=async()=>{
+    const email=(document.getElementById("bvRecEmail").value||"").trim();
+    const tel4=(document.getElementById("bvRecTel").value||"").replace(/\D/g,"");
+    const mostrar=m=>{erro.textContent=m;erro.classList.add("on");};
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email))return mostrar("Digite o e-mail do cadastro.");
+    if(tel4.length!==4)return mostrar("Digite os 4 últimos dígitos do celular.");
+    erro.classList.remove("on");
+    btn.disabled=true;btn.textContent="Recuperando…";
+    const r=await recuperarBackupNuvem(email,tel4);
+    btn.disabled=false;btn.textContent="Recuperar meus dados";
+    if(!r.ok)return mostrar(r.erro);
+    location.reload();
+  };
+}
+
 /* ================= BOOT ================= */
 applyTheme();document.getElementById("geminiKey").value=S.settings.geminiKey||"";
 renderWater();renderMeds();renderExames();renderUsoArmz();renderPerfil();renderModeloTreino();
@@ -2754,6 +2950,10 @@ initToday();initDiary();renderChat();renderSyncUI();
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")save(true);});
 window.addEventListener("pagehide",()=>save(true));
 window.addEventListener("blur",()=>save(true));
+/* Backup na nuvem: manda ao esconder a aba e agenda um logo apos abrir. */
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")enviarBackupNuvem(true);});
+window.addEventListener("pagehide",()=>enviarBackupNuvem(true));
+if(S.settings&&S.settings.onboardDone){pedirPersistencia();agendarBackupNuvem();}
 if(S.settings.firebase&&S.settings.firebase.apiKey)fbConnect();
 window.addEventListener("resize",()=>{if(document.getElementById("view-prog").classList.contains("active"))renderProgress();});
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
